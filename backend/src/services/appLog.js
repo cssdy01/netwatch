@@ -1,9 +1,18 @@
 // src/services/appLog.js — structured application logger with auto-trim
+// Phase 1: timestamps stored as UTC in DB; IST conversion at API layer.
+// Log categories aligned with Phase 1 spec:
+//   TASK      — monitoring task checks, fault/recovery/manual run/email events
+//   ADMIN     — task CRUD, email toggle, activate/deactivate, backup, settings
+//   AUTH      — login/logout/auth events; actor = 'admin' or actual username
+//   SYSTEM    — scheduler/internal events
+//   EMAIL     — mail send/fail events
+//   BACKUP    — import/export events
+
 const db = require('../db');
 const { v4: uuidv4 } = require('uuid');
 
 // Lazy-load to avoid circular dependency (logsController → appLog → logsController)
-let _trimAppLogs  = null;
+let _trimAppLogs   = null;
 let _trimAuditLogs = null;
 
 function getTrimFns() {
@@ -15,8 +24,15 @@ function getTrimFns() {
 }
 
 /**
- * Write a structured event to app_logs, then trim if over the 300-row cap.
+ * Write a structured event to app_logs, then trim if needed.
  * Never throws — falls back to console on error.
+ *
+ * @param {'INFO'|'WARN'|'ERROR'} level
+ * @param {string} category   One of: TASK, ADMIN, AUTH, SYSTEM, EMAIL, BACKUP
+ * @param {string} actor      Username or 'system'/'scheduler'
+ * @param {string|null} taskId
+ * @param {string} message
+ * @param {string|null} detail
  */
 function log(level, category, actor, taskId, message, detail = null) {
   try {
@@ -28,10 +44,11 @@ function log(level, category, actor, taskId, message, detail = null) {
     db.prepare(`
       INSERT INTO app_logs (id, level, category, actor, task_id, task_name, message, detail)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-    `).run(uuidv4(), level, category, actor || 'system',
-           taskId || null, taskName, message, detail || null);
+    `).run(
+      uuidv4(), level, category, actor || 'system',
+      taskId || null, taskName, message, detail || null
+    );
 
-    // Auto-trim after insert (synchronous, fast SQLite)
     try { getTrimFns(); _trimAppLogs && _trimAppLogs(); } catch {}
   } catch (err) {
     console.error('[AppLog FALLBACK]', level, category, message, err.message);
@@ -39,7 +56,8 @@ function log(level, category, actor, taskId, message, detail = null) {
 }
 
 /**
- * Write to audit_logs, then trim if over the 150-row cap.
+ * Write to audit_logs (AUTH category events).
+ * actor should be the actual username or 'admin'.
  */
 function audit(actor, action, detail = null) {
   try {

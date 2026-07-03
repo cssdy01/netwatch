@@ -1,42 +1,34 @@
 // src/services/monitoringService.js
 // Monitoring state machine and escalation policy.
-//
-// Required behavior:
-//   - Check application URLs / systems on a 5-minute scheduler cycle.
-//   - L1 is sent once when an issue is confirmed (N consecutive failures).
-//   - L2 is sent once after the same incident remains open for 48 hours.
-//   - L3 is sent every 48 hours after L2 while the incident remains unresolved.
-//   - All Clear is sent once on recovery, then escalation state is removed.
-//   - Test emails are never scheduled; they send only when explicitly triggered.
-//
-// FIX (mail storm): L1 cooldown now uses incident_state.l1_sent_at (persisted in DB)
-// instead of querying app_logs (which gets trimmed and loses the cooldown record,
-// causing repeated L1 alerts on every poll cycle).
+// Phase 1 changes:
+//   - MIN_INTERVAL_MIN updated to 3 (was 5); MAX_INTERVAL_MIN enforced at 15
+//   - IST timestamps used for all log messages and email data
+//   - is_vm field no longer required or enforced for Ping tasks
 
 const cron = require('node-cron');
 const { v4: uuidv4 } = require('uuid');
 const db = require('../db');
 const { log } = require('./appLog');
 const pingAgent = require('../agents/pingAgent');
-const webAgent = require('../agents/webAgent');
+const webAgent  = require('../agents/webAgent');
 const mailService = require('../mail/mailService');
 
-const DEFAULT_N = parseInt(process.env.DEFAULT_N_THRESHOLD || '2');
-const POLL_CYCLE_CRON = process.env.POLL_CYCLE_CRON || '*/5 * * * *';
-const MIN_INTERVAL_MIN = parseInt(process.env.MIN_MONITOR_INTERVAL_MIN || '5');
-const L2_DELAY_MS = 48 * 60 * 60 * 1000;
-const L3_REPEAT_MS = 48 * 60 * 60 * 1000;
+const DEFAULT_N        = parseInt(process.env.DEFAULT_N_THRESHOLD || '2');
+const POLL_CYCLE_CRON  = process.env.POLL_CYCLE_CRON || '*/3 * * * *'; // check every 3 minutes
+const MIN_INTERVAL_MIN = parseInt(process.env.MIN_MONITOR_INTERVAL_MIN || '3');
+const MAX_INTERVAL_MIN = parseInt(process.env.MAX_MONITOR_INTERVAL_MIN || '15');
+const L2_DELAY_MS      = 48 * 60 * 60 * 1000;
+const L3_REPEAT_MS     = 48 * 60 * 60 * 1000;
 
 // L1 cooldown: minimum time between L1 alerts for the same incident.
-// Uses incident_state.l1_sent_at (persistent) — NOT app_logs (trimmed/volatile).
 const L1_COOLDOWN_MS = parseInt(process.env.L1_COOLDOWN_MIN || '60') * 60 * 1000;
 
-let schedulersStarted = false;
-let pollRunning = false;
-let escalationRunning = false;
+let schedulersStarted   = false;
+let pollRunning         = false;
+let escalationRunning   = false;
 
 async function dispatchAgent(task) {
-  if (task.type === 'PING') return pingAgent.run(task);
+  if (task.type === 'PING')        return pingAgent.run(task);
   if (task.type === 'APPLICATION') return webAgent.run(task);
   throw new Error(`Unknown task type: ${task.type}`);
 }
@@ -68,15 +60,16 @@ async function processResult(task, agentResult) {
   if (!current || current.deleted_at || current.is_active === 0) return agentResult;
 
   const prevStatus = current.status || 'OK';
-  const prevCfc = current.cfc || 0;
-  let newCfc = prevCfc;
+  const prevCfc    = current.cfc    || 0;
+  let newCfc    = prevCfc;
   let newStatus = prevStatus;
 
   if (result === 'PASS') {
     newCfc = 0;
     if (prevStatus === 'FAULT') {
       newStatus = 'OK';
-      log('INFO', 'MONITORING', 'scheduler', current.id, `"${current.name}" FAULT -> OK`, null);
+      log('INFO', 'TASK', 'scheduler', current.id,
+        `"${current.name}" FAULT → OK`, null);
       await handleRecovery(current);
     }
   } else {
@@ -84,15 +77,15 @@ async function processResult(task, agentResult) {
     const threshold = current.n_threshold || DEFAULT_N;
 
     if (newCfc < threshold) {
-      log('WARN', 'MONITORING', 'scheduler', current.id,
-        `"${current.name}" failure ${newCfc}/${threshold} - below alert threshold`, errorRaw || null);
+      log('WARN', 'TASK', 'scheduler', current.id,
+        `"${current.name}" failure ${newCfc}/${threshold} — below alert threshold`, errorRaw || null);
     } else if (prevStatus !== 'FAULT') {
       newStatus = 'FAULT';
-      log('INFO', 'MONITORING', 'scheduler', current.id,
-        `"${current.name}" OK -> FAULT (CFC=${newCfc})`, errorRaw || null);
+      log('INFO', 'TASK', 'scheduler', current.id,
+        `"${current.name}" OK → FAULT (CFC=${newCfc})`, errorRaw || null);
       await handleFaultStart(current, errorRaw);
     }
-    // Task is already in FAULT — do nothing here; escalation handles L2/L3.
+    // Task already in FAULT — escalation handles L2/L3.
   }
 
   db.prepare(`
@@ -109,7 +102,7 @@ async function handleFaultStart(task, errorRaw) {
   const existing = db.prepare('SELECT id FROM incident_state WHERE task_id=?').get(task.id);
   if (existing) {
     log('WARN', 'EMAIL', 'scheduler', task.id,
-      `L1 skipped - incident already open for "${task.name}"`, null);
+      `L1 skipped — incident already open for "${task.name}"`, null);
     return;
   }
 
@@ -121,19 +114,17 @@ async function handleFaultStart(task, errorRaw) {
   const emailOn = task.email_enabled && task.email_enabled !== 0;
   if (!emailOn) {
     log('WARN', 'EMAIL', 'scheduler', task.id,
-      `L1 skipped - email disabled for "${task.name}"`, null);
+      `L1 skipped — email disabled for "${task.name}"`, null);
     return;
   }
 
-  // FIX: Read l1_sent_at from incident_state (persistent) — not app_logs (volatile/trimmed).
-  // This prevents repeated L1 alerts when the log record rolls off the trim window.
   const incident = db.prepare('SELECT * FROM incident_state WHERE task_id=?').get(task.id);
 
   if (incident && incident.l1_sent_at) {
     const age = Date.now() - new Date(incident.l1_sent_at).getTime();
     if (age < L1_COOLDOWN_MS) {
       log('WARN', 'EMAIL', 'scheduler', task.id,
-        `L1 suppressed for "${task.name}" - previous L1 was ${Math.round(age / 60000)}m ago (cooldown: ${Math.round(L1_COOLDOWN_MS / 60000)}m)`, null);
+        `L1 suppressed for "${task.name}" — previous L1 was ${Math.round(age / 60000)}m ago (cooldown: ${Math.round(L1_COOLDOWN_MS / 60000)}m)`, null);
       return;
     }
   }
@@ -170,7 +161,7 @@ async function handleRecovery(task) {
 
 async function runPollCycle() {
   if (pollRunning) {
-    log('WARN', 'SYSTEM', 'scheduler', null, 'Poll cycle skipped - previous cycle still running', null);
+    log('WARN', 'SYSTEM', 'scheduler', null, 'Poll cycle skipped — previous cycle still running', null);
     return;
   }
   pollRunning = true;
@@ -182,15 +173,18 @@ async function runPollCycle() {
 
     const now = Date.now();
     for (const task of activeTasks) {
-      const intervalMs = Math.max(task.interval_min || MIN_INTERVAL_MIN, MIN_INTERVAL_MIN) * 60 * 1000;
-      const lastChecked = task.last_checked ? new Date(task.last_checked).getTime() : 0;
+      // Clamp interval to allowed range
+      const rawInterval  = task.interval_min || MIN_INTERVAL_MIN;
+      const intervalMin  = Math.min(Math.max(rawInterval, MIN_INTERVAL_MIN), MAX_INTERVAL_MIN);
+      const intervalMs   = intervalMin * 60 * 1000;
+      const lastChecked  = task.last_checked ? new Date(task.last_checked).getTime() : 0;
       if (now - lastChecked < intervalMs) continue;
 
       try {
         const agentResult = await dispatchAgent(task);
         await processResult(task, agentResult);
       } catch (err) {
-        log('ERROR', 'MONITORING', 'scheduler', task.id,
+        log('ERROR', 'TASK', 'scheduler', task.id,
           `Agent error for "${task.name}": ${err.message}`, err.stack);
       }
     }
@@ -201,7 +195,7 @@ async function runPollCycle() {
 
 async function runEscalationCheck() {
   if (escalationRunning) {
-    log('WARN', 'SYSTEM', 'scheduler', null, 'Escalation cycle skipped - previous cycle still running', null);
+    log('WARN', 'SYSTEM', 'scheduler', null, 'Escalation cycle skipped — previous cycle still running', null);
     return;
   }
   escalationRunning = true;
@@ -215,7 +209,7 @@ async function runEscalationCheck() {
     `).all();
 
     for (const row of rows) {
-      const inc = db.prepare('SELECT * FROM incident_state WHERE task_id=?').get(row.task_id);
+      const inc  = db.prepare('SELECT * FROM incident_state WHERE task_id=?').get(row.task_id);
       const task = db.prepare('SELECT * FROM tasks WHERE id=?').get(row.task_id);
       if (!inc || !task) continue;
 
@@ -227,7 +221,7 @@ async function runEscalationCheck() {
         ORDER BY checked_at DESC LIMIT 1
       `).get(task.id)?.error_raw || 'No recent error details';
 
-      // L2 once after 48h from incident start.
+      // L2 once after 48h from incident start
       if (elapsed >= L2_DELAY_MS && !inc.l2_sent_at) {
         const sentAt = nowIso();
         if (emailOn) {
@@ -249,11 +243,11 @@ async function runEscalationCheck() {
         continue;
       }
 
-      // L3 every 48h after L2 while unresolved.
+      // L3 every 48h after L2 while unresolved
       const fresh = db.prepare('SELECT * FROM incident_state WHERE task_id=?').get(task.id);
       if (!fresh || !fresh.l2_sent_at) continue;
 
-      const base = fresh.last_l3_repeat || fresh.l2_sent_at;
+      const base      = fresh.last_l3_repeat || fresh.l2_sent_at;
       const sinceBase = Date.now() - new Date(base).getTime();
       if (sinceBase >= L3_REPEAT_MS) {
         const sentAt = nowIso();
@@ -284,29 +278,30 @@ async function runEscalationCheck() {
 async function manualRun(taskId, actor) {
   const task = db.prepare('SELECT * FROM tasks WHERE id=?').get(taskId);
   if (!task) throw new Error('Task not found');
-  log('INFO', 'MONITORING', actor, taskId, `Manual run triggered for "${task.name}" by ${actor}`, null);
+  log('INFO', 'TASK', actor, taskId, `Manual run triggered for "${task.name}" by ${actor}`, null);
   const agentResult = await dispatchAgent(task);
   await processResult(task, agentResult);
   return agentResult;
 }
 
 async function testTask(taskData) {
-  // Connectivity test only. It records no checks and sends no email.
+  // Connectivity test only. Records no checks and sends no email.
   return dispatchAgent(taskData);
 }
 
 function startSchedulers() {
   if (schedulersStarted) {
-    log('WARN', 'SYSTEM', 'system', null, 'Schedulers already started - duplicate start ignored', null);
+    log('WARN', 'SYSTEM', 'system', null, 'Schedulers already started — duplicate start ignored', null);
     return;
   }
   schedulersStarted = true;
 
-  // Enforce minimum interval on all tasks at startup
-  const fixed = db.prepare('UPDATE tasks SET interval_min=? WHERE interval_min < ?').run(MIN_INTERVAL_MIN, MIN_INTERVAL_MIN);
-  if (fixed.changes > 0) {
+  // Enforce interval bounds on all tasks at startup
+  const fixedLow  = db.prepare('UPDATE tasks SET interval_min=? WHERE interval_min < ?').run(MIN_INTERVAL_MIN, MIN_INTERVAL_MIN);
+  const fixedHigh = db.prepare('UPDATE tasks SET interval_min=? WHERE interval_min > ?').run(MAX_INTERVAL_MIN, MAX_INTERVAL_MIN);
+  if (fixedLow.changes + fixedHigh.changes > 0) {
     log('WARN', 'SYSTEM', 'system', null,
-      `Fixed ${fixed.changes} task(s) with interval below ${MIN_INTERVAL_MIN} minutes`, null);
+      `Fixed ${fixedLow.changes + fixedHigh.changes} task(s) with out-of-range interval`, null);
   }
 
   cron.schedule(POLL_CYCLE_CRON, async () => {
@@ -314,7 +309,6 @@ function startSchedulers() {
     catch (e) { log('ERROR', 'SYSTEM', 'scheduler', null, `Poll cycle failed: ${e.message}`, e.stack); }
   });
 
-  // Evaluate escalation on the same 5-minute cadence; DB timestamps prevent duplicates.
   cron.schedule(POLL_CYCLE_CRON, async () => {
     try { await runEscalationCheck(); }
     catch (e) { log('ERROR', 'SYSTEM', 'scheduler', null, `Escalation cycle failed: ${e.message}`, e.stack); }
@@ -334,15 +328,25 @@ function startSchedulers() {
     }
   });
 
+  // End-of-day archive job: runs at 23:58 IST every day
+  // IST = UTC+5:30, so 23:58 IST = 18:28 UTC
+  cron.schedule('28 18 * * *', async () => {
+    try {
+      const { archiveLogs } = require('../controllers/logsController');
+      await archiveLogs();
+    } catch (e) {
+      log('ERROR', 'SYSTEM', 'scheduler', null, `Log archive job failed: ${e.message}`, e.stack);
+    }
+  });
+
   log('INFO', 'SYSTEM', 'system', null,
-    `Schedulers started - poll:${POLL_CYCLE_CRON} escalation:${POLL_CYCLE_CRON} minInterval:${MIN_INTERVAL_MIN}m L1cooldown:${Math.round(L1_COOLDOWN_MS/60000)}m L2:48h L3:every48h`, null);
+    `Schedulers started — poll:${POLL_CYCLE_CRON} interval:${MIN_INTERVAL_MIN}–${MAX_INTERVAL_MIN}m L1cooldown:${Math.round(L1_COOLDOWN_MS/60000)}m L2:48h L3:every48h`, null);
 }
 
 module.exports = {
   startSchedulers,
   manualRun,
   testTask,
-  // exported for focused tests if needed
   runPollCycle,
   runEscalationCheck,
 };

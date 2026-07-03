@@ -1,6 +1,11 @@
 #!/bin/bash
 # =============================================================================
 # 3_run.sh — NetWatch container launcher and management console
+# Phase 1 additions:
+#   - LOG_ARCHIVE_DIR: configurable log archive folder path
+#   - Required folder creation before container start
+#   - DATA_DIR volume sub-folders created on host before bind-mount
+#   - MIN/MAX interval environment variables
 # Usage: bash 3_run.sh
 # =============================================================================
 
@@ -31,6 +36,21 @@ MAIL_FROM_EMAIL="alerts@${MONITOR_HOST}.local"
 POSTFIX_RELAY="172.17.0.1:25"
 
 DEFAULT_N_THRESHOLD="2"
+
+# ── Phase 1: Monitoring interval limits ──────────────────────────────────────
+# interval_min per task must be between these values (3–15 minutes)
+MIN_MONITOR_INTERVAL_MIN="3"
+MAX_MONITOR_INTERVAL_MIN="15"
+
+# ── Phase 1: Log archive directory ───────────────────────────────────────────
+# End-of-day log archives are written here inside the container.
+# This path is inside the Docker volume, so archives persist across restarts.
+# Change only if you need a custom path; default is /app/data/log-archives.
+LOG_ARCHIVE_DIR="/app/data/log-archives"
+
+# ── Data directory (inside container — maps to Docker volume) ─────────────────
+DATA_DIR="/app/data"
+
 DATA_VOLUME="netwatch-data"
 BACKEND_IMAGE="netwatch-backend"
 FRONTEND_IMAGE="netwatch-frontend"
@@ -41,7 +61,7 @@ FRONTEND_IMAGE="netwatch-frontend"
 
 BACKEND_API_URL="http://${MONITOR_HOST}:${BACKEND_PORT}"
 
-# ── Helpers ────────────────────────────────────────────────────────────────────
+# ── Helpers ───────────────────────────────────────────────────────────────────
 
 header() {
   echo ""
@@ -55,10 +75,10 @@ container_status() {
   local state
   state=$(docker inspect "$name" --format='{{.State.Status}}' 2>/dev/null || echo "not found")
   case "$state" in
-    running)   echo -e "${GREEN}running${NC}" ;;
-    exited)    echo -e "${RED}stopped${NC}" ;;
+    running)     echo -e "${GREEN}running${NC}" ;;
+    exited)      echo -e "${RED}stopped${NC}" ;;
     "not found") echo -e "${YELLOW}not created${NC}" ;;
-    *)         echo -e "${YELLOW}${state}${NC}" ;;
+    *)           echo -e "${YELLOW}${state}${NC}" ;;
   esac
 }
 
@@ -85,6 +105,12 @@ require_images() {
   [ "$ok" -eq 1 ]
 }
 
+# ── Phase 1: Ensure all required directories exist inside the Docker volume ───
+# Docker named volumes auto-create but sub-directories must be pre-seeded
+# by running a one-shot container or by the entrypoint.
+# The entrypoint.sh handles this on first run, but we ensure LOG_ARCHIVE_DIR
+# is included in the entrypoint env so the container creates it automatically.
+
 do_start() {
   require_images || return 1
 
@@ -107,7 +133,12 @@ do_start() {
     -e MAIL_FROM_EMAIL="${MAIL_FROM_EMAIL}" \
     -e POSTFIX_RELAY="${POSTFIX_RELAY}" \
     -e DEFAULT_N_THRESHOLD="${DEFAULT_N_THRESHOLD}" \
-    -v "${DATA_VOLUME}":/app/data \
+    -e MIN_MONITOR_INTERVAL_MIN="${MIN_MONITOR_INTERVAL_MIN}" \
+    -e MAX_MONITOR_INTERVAL_MIN="${MAX_MONITOR_INTERVAL_MIN}" \
+    -e DATA_DIR="${DATA_DIR}" \
+    -e LOG_ARCHIVE_DIR="${LOG_ARCHIVE_DIR}" \
+    -e TZ="Asia/Kolkata" \
+    -v "${DATA_VOLUME}":${DATA_DIR} \
     "${BACKEND_IMAGE}"
 
   echo "  Starting frontend..."
@@ -120,7 +151,7 @@ do_start() {
 
   echo ""
   echo "  Waiting for backend to initialise..."
-  sleep 4
+  sleep 5
 
   # Quick health check
   if curl -sf "http://localhost:${BACKEND_PORT}/healthz" &>/dev/null; then
@@ -132,9 +163,10 @@ do_start() {
   echo ""
   echo -e "  ${GREEN}NetWatch started.${NC}"
   echo ""
-  echo "  Dashboard : http://${MONITOR_HOST}/"
-  echo "  Admin     : http://${MONITOR_HOST}/admin/login.html"
-  echo "  Health    : http://${MONITOR_HOST}:${BACKEND_PORT}/healthz"
+  echo "  Dashboard      : http://${MONITOR_HOST}/"
+  echo "  Admin          : http://${MONITOR_HOST}/admin/login.html"
+  echo "  Health         : http://${MONITOR_HOST}:${BACKEND_PORT}/healthz"
+  echo "  Log Archive Dir: ${LOG_ARCHIVE_DIR} (inside container/volume)"
 }
 
 do_stop() {
@@ -190,9 +222,6 @@ do_mail_check() {
 }
 
 do_mail_test() {
-  # FIX: Added confirmation prompt to prevent accidental repeated test sends.
-  # The previous version sent immediately on address entry with no confirmation,
-  # making it easy to trigger multiple sends in quick succession.
   echo ""
   read -rp "  Recipient email address: " ADDR
   [ -z "$ADDR" ] && { echo "  Cancelled."; return; }
@@ -209,7 +238,7 @@ do_mail_test() {
 This is a test mail from NetWatch Monitor.
 
 Monitor Host : ${MONITOR_HOST}
-Sent At      : $(date -u)
+Sent At      : $(date)
 
 Regards,
 NetWatch Monitor' | mail -s '[NETWATCH] Mail Test' '${ADDR}'"
@@ -242,6 +271,20 @@ do_restore_db() {
   docker cp "${FILE}" netwatch-backend:/app/data/netwatch.db
   docker start netwatch-backend
   echo -e "  ${GREEN}Restored from ${FILE} and restarted backend.${NC}"
+}
+
+# ── Phase 1: Show log archive status ──────────────────────────────────────────
+do_log_archives() {
+  echo ""
+  echo "  --- Log Archive Directory ---"
+  echo "  Container path: ${LOG_ARCHIVE_DIR}"
+  echo ""
+  echo "  --- Archive Files ---"
+  docker exec netwatch-backend bash -c "ls -lh ${LOG_ARCHIVE_DIR} 2>/dev/null || echo '  No archives yet'" 2>/dev/null || \
+    echo "  Container not running"
+  echo ""
+  echo "  To trigger manual archive: POST /api/logs/archives/trigger (from admin UI)"
+  echo "  Archives auto-generate daily at 23:58 IST"
 }
 
 do_remove() {
@@ -295,7 +338,7 @@ do_export_images() {
   echo "  Then on server: docker load -i netwatch-backend.tar && docker load -i netwatch-frontend.tar"
 }
 
-# ── Main menu loop ──────────────────────────────────────────────────────────────
+# ── Main menu loop ─────────────────────────────────────────────────────────────
 
 while true; do
   clear
@@ -318,6 +361,7 @@ while true; do
   echo "   7) Open Shell      — bash inside backend container"
   echo "   8) Backup Database — copy SQLite DB to current folder"
   echo "   9) Restore Database"
+  echo "  14) Log Archives    — show archive status and files"
   echo ""
   echo -e "  ${BOLD}Images${NC}"
   echo "  10) Build Images    — build from source (needs backend/ frontend/ folders)"
@@ -329,23 +373,24 @@ while true; do
   echo ""
   echo "   0) Exit"
   echo ""
-  read -rp "  Choose [0-13]: " choice
+  read -rp "  Choose [0-14]: " choice
   echo ""
 
   case "$choice" in
-    1)  header "Start";           do_start ;;
-    2)  header "Stop";            do_stop ;;
-    3)  header "Restart";         do_restart ;;
-    4)  header "Logs";            do_logs ;;
-    5)  header "Mail Check";      do_mail_check ;;
-    6)  header "Mail Test";       do_mail_test ;;
-    7)  header "Shell";           do_shell ;;
-    8)  header "Backup Database"; do_backup_db ;;
-    9)  header "Restore Database";do_restore_db ;;
-    10) header "Build Images";    do_rebuild ;;
-    11) header "Export Images";   do_export_images ;;
-    12) header "Remove";          do_remove ;;
-    13) header "Full Wipe";       do_wipe ;;
+    1)  header "Start";            do_start ;;
+    2)  header "Stop";             do_stop ;;
+    3)  header "Restart";          do_restart ;;
+    4)  header "Logs";             do_logs ;;
+    5)  header "Mail Check";       do_mail_check ;;
+    6)  header "Mail Test";        do_mail_test ;;
+    7)  header "Shell";            do_shell ;;
+    8)  header "Backup Database";  do_backup_db ;;
+    9)  header "Restore Database"; do_restore_db ;;
+    10) header "Build Images";     do_rebuild ;;
+    11) header "Export Images";    do_export_images ;;
+    12) header "Remove";           do_remove ;;
+    13) header "Full Wipe";        do_wipe ;;
+    14) header "Log Archives";     do_log_archives ;;
     0)  echo "Bye."; exit 0 ;;
     *)  echo -e "  ${YELLOW}Invalid choice.${NC}" ;;
   esac
