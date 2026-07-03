@@ -1,3 +1,19 @@
+Windows:--------------------------------------------------------------------------
+
+cd D:\docker\netwatch-v3.0_base\netwatch
+
+git init
+
+git add .
+git commit -m "Initial NetWatch source code"
+
+git remote add origin https://github.com/cssdy01/netwatch.git
+
+git branch -M main
+git push -u origin main
+
+
+Linux Server:-----------------------------------------------------------------------
 
 git clone https://github.com/cssdy01/netwatch.git
 
