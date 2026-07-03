@@ -1,0 +1,325 @@
+// src/controllers/tasksController.js
+const { Router } = require('express');
+const { v4: uuidv4 } = require('uuid');
+const db = require('../db');
+const { requireAuth } = require('../middleware/auth');
+const { validateTask } = require('../middleware/validateTask');
+const { log, audit } = require('../services/appLog');
+const { manualRun, testTask } = require('../services/monitoringService');
+
+const router = Router();
+
+// ── Helper ────────────────────────────────────────────────────────────────────
+
+function enrichTask(task) {
+  const incident = db.prepare('SELECT * FROM incident_state WHERE task_id=?').get(task.id);
+  const lastCheck = db.prepare(`
+    SELECT result, response_ms, error_raw, endpoint_results, checked_at
+    FROM checks WHERE task_id=? ORDER BY checked_at DESC LIMIT 1
+  `).get(task.id);
+
+  let incidentDuration = null;
+  if (incident) {
+    const ms = Date.now() - new Date(incident.t0).getTime();
+    const h = Math.floor(ms / 3600000);
+    const m = Math.floor((ms % 3600000) / 60000);
+    incidentDuration = h ? `${h}h ${m}m` : `${m}m`;
+  }
+
+  return {
+    ...task,
+    email_enabled: task.email_enabled === 1,
+    is_vm:         task.is_vm === 1,
+    is_active:     task.is_active !== 0,   // default true if null/1
+    urls: task.urls ? JSON.parse(task.urls) : null,
+    last_result: lastCheck?.result || null,
+    last_response_ms: lastCheck?.response_ms || null,
+    last_error_raw: lastCheck?.error_raw || null,
+    last_endpoint_results: lastCheck?.endpoint_results ? JSON.parse(lastCheck.endpoint_results) : null,
+    last_checked_at: lastCheck?.checked_at || null,
+    incident_duration: incidentDuration,
+    t0: incident?.t0 || null,
+  };
+}
+
+// ── PUBLIC ROUTES — declared BEFORE /:id ─────────────────────────────────────
+
+// GET /api/tasks/public/summary
+router.get('/public/summary', (req, res) => {
+  const tasks = db.prepare(`SELECT * FROM tasks WHERE deleted_at IS NULL ORDER BY name`).all();
+  res.json(tasks.map(t => {
+    const lastCheck = db.prepare(`
+      SELECT result, response_ms, checked_at FROM checks
+      WHERE task_id=? ORDER BY checked_at DESC LIMIT 1
+    `).get(t.id);
+    const incident = db.prepare('SELECT t0 FROM incident_state WHERE task_id=?').get(t.id);
+    let incidentDuration = null;
+    if (incident) {
+      const ms = Date.now() - new Date(incident.t0).getTime();
+      const h = Math.floor(ms / 3600000);
+      const m = Math.floor((ms % 3600000) / 60000);
+      incidentDuration = h ? `${h}h ${m}m` : `${m}m`;
+    }
+    return {
+      id: t.id, name: t.name, type: t.type, target: t.target,
+      status: t.status, last_checked: t.last_checked,
+      is_active: t.is_active !== 0,
+      last_result: lastCheck?.result || null,
+      last_response_ms: lastCheck?.response_ms || null,
+      incident_duration: incidentDuration,
+    };
+  }));
+});
+
+// GET /api/tasks/public/:id
+router.get('/public/:id', (req, res) => {
+  const task = db.prepare(`SELECT * FROM tasks WHERE id=? AND deleted_at IS NULL`).get(req.params.id);
+  if (!task) return res.status(404).json({ error: 'Task not found' });
+
+  const checks = db.prepare(`
+    SELECT result, response_ms, error_raw, endpoint_results, checked_at
+    FROM checks WHERE task_id=? ORDER BY checked_at DESC LIMIT 15
+  `).all(task.id);
+
+  const incident = db.prepare('SELECT * FROM incident_state WHERE task_id=?').get(task.id);
+
+  let incidentDuration = null;
+  if (incident) {
+    const ms = Date.now() - new Date(incident.t0).getTime();
+    const h = Math.floor(ms / 3600000);
+    const m = Math.floor((ms % 3600000) / 60000);
+    incidentDuration = h ? `${h}h ${m}m` : `${m}m`;
+  }
+
+  const lastCheck = checks[0] || null;
+
+  res.json({
+    id: task.id, name: task.name, type: task.type, target: task.target,
+    os_type: task.os_type, status: task.status,
+    is_active: task.is_active !== 0,
+    urls: task.urls ? JSON.parse(task.urls) : null,
+    last_result: lastCheck?.result || null,
+    last_response_ms: lastCheck?.response_ms || null,
+    last_error_raw: lastCheck?.error_raw || null,
+    last_endpoint_results: lastCheck?.endpoint_results ? JSON.parse(lastCheck.endpoint_results) : null,
+    last_checked_at: lastCheck?.checked_at || null,
+    incident_duration: incidentDuration,
+    t0: incident?.t0 || null,
+    incident: incident ? {
+      t0: incident.t0,
+      l1_sent_at: incident.l1_sent_at,
+      l2_sent_at: incident.l2_sent_at,
+      l3_sent_at: incident.l3_sent_at,
+      alerted_tiers: incident.alerted_tiers,
+    } : null,
+    checks: checks.map(c => ({
+      ...c,
+      endpoint_results: c.endpoint_results ? JSON.parse(c.endpoint_results) : null,
+    })),
+  });
+});
+
+// POST /api/tasks/test
+router.post('/test', requireAuth, async (req, res) => {
+  try {
+    const result = await testTask(req.body);
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── AUTHENTICATED ROUTES ──────────────────────────────────────────────────────
+
+// GET /api/tasks
+router.get('/', requireAuth, (req, res) => {
+  const tasks = db.prepare(`SELECT * FROM tasks WHERE deleted_at IS NULL ORDER BY name`).all();
+  res.json(tasks.map(enrichTask));
+});
+
+// GET /api/tasks/bin
+router.get('/bin', requireAuth, (req, res) => {
+  const tasks = db.prepare(`SELECT * FROM tasks WHERE deleted_at IS NOT NULL ORDER BY deleted_at DESC`).all();
+  res.json(tasks.map(enrichTask));
+});
+
+// GET /api/tasks/:id
+router.get('/:id', requireAuth, (req, res) => {
+  const task = db.prepare(`SELECT * FROM tasks WHERE id=?`).get(req.params.id);
+  if (!task) return res.status(404).json({ error: 'Task not found' });
+
+  const checks = db.prepare(`
+    SELECT * FROM checks WHERE task_id=? ORDER BY checked_at DESC LIMIT 100
+  `).all(task.id);
+
+  const incident = db.prepare('SELECT * FROM incident_state WHERE task_id=?').get(task.id);
+
+  const faultStats = db.prepare(`
+    SELECT date(checked_at) as day, COUNT(*) as faults
+    FROM checks
+    WHERE task_id=? AND result='FAIL' AND checked_at >= datetime('now', '-30 days')
+    GROUP BY day ORDER BY day
+  `).all(task.id);
+
+  res.json({
+    ...enrichTask(task),
+    checks: checks.map(c => ({
+      ...c,
+      endpoint_results: c.endpoint_results ? JSON.parse(c.endpoint_results) : null,
+    })),
+    incident,
+    fault_stats: faultStats,
+  });
+});
+
+// POST /api/tasks
+router.post('/', requireAuth, validateTask, (req, res) => {
+  const {
+    name, type, target, urls, os_type, is_vm,
+    interval_min, n_threshold, email_l1, email_l2, email_l3, email_enabled, is_active,
+  } = req.body;
+
+  const DEFAULT_N = parseInt(process.env.DEFAULT_N_THRESHOLD || '2');
+  const id = uuidv4();
+
+  db.prepare(`
+    INSERT INTO tasks (id, name, type, target, urls, os_type, is_vm, interval_min, n_threshold,
+      email_l1, email_l2, email_l3, email_enabled, is_active)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `).run(
+    id, name.trim(), type, target.trim(),
+    urls ? JSON.stringify(typeof urls === 'string' ? JSON.parse(urls) : urls) : null,
+    os_type || null, is_vm ? 1 : 0,
+    parseInt(interval_min),
+    n_threshold ? parseInt(n_threshold) : DEFAULT_N,
+    email_l1 || '', email_l2 || '', email_l3 || '',
+    email_enabled === false || email_enabled === 0 ? 0 : 1,
+    is_active === false || is_active === 0 ? 0 : 1
+  );
+
+  const created = db.prepare('SELECT * FROM tasks WHERE id=?').get(id);
+  log('INFO', 'ADMIN', req.user.username, id, `Task "${name}" created`, null);
+  audit(req.user.username, 'TASK_CREATED', `Task "${name}" (${type}) created`);
+  res.status(201).json(enrichTask(created));
+});
+
+// PUT /api/tasks/:id
+router.put('/:id', requireAuth, validateTask, (req, res) => {
+  const task = db.prepare('SELECT * FROM tasks WHERE id=? AND deleted_at IS NULL').get(req.params.id);
+  if (!task) return res.status(404).json({ error: 'Task not found' });
+
+  const {
+    name, type, target, urls, os_type, is_vm,
+    interval_min, n_threshold, email_l1, email_l2, email_l3, email_enabled, is_active,
+  } = req.body;
+  const DEFAULT_N = parseInt(process.env.DEFAULT_N_THRESHOLD || '2');
+
+  db.prepare(`
+    UPDATE tasks SET name=?, type=?, target=?, urls=?, os_type=?, is_vm=?,
+      interval_min=?, n_threshold=?, email_l1=?, email_l2=?, email_l3=?,
+      email_enabled=?, is_active=?, updated_at=datetime('now')
+    WHERE id=?
+  `).run(
+    name.trim(), type, target.trim(),
+    urls ? JSON.stringify(typeof urls === 'string' ? JSON.parse(urls) : urls) : null,
+    os_type || null, is_vm ? 1 : 0,
+    parseInt(interval_min),
+    n_threshold ? parseInt(n_threshold) : DEFAULT_N,
+    email_l1 || '', email_l2 || '', email_l3 || '',
+    email_enabled === false || email_enabled === 0 ? 0 : 1,
+    is_active === false || is_active === 0 ? 0 : 1,
+    req.params.id
+  );
+
+  log('INFO', 'ADMIN', req.user.username, req.params.id, `Task "${name}" updated`, null);
+  audit(req.user.username, 'TASK_UPDATED', `Task "${name}" updated`);
+  const updated = db.prepare('SELECT * FROM tasks WHERE id=?').get(req.params.id);
+  res.json(enrichTask(updated));
+});
+
+// DELETE /api/tasks/:id (soft)
+router.delete('/:id', requireAuth, (req, res) => {
+  const task = db.prepare('SELECT * FROM tasks WHERE id=? AND deleted_at IS NULL').get(req.params.id);
+  if (!task) return res.status(404).json({ error: 'Task not found' });
+
+  db.prepare(`UPDATE tasks SET deleted_at=datetime('now'), updated_at=datetime('now') WHERE id=?`)
+    .run(req.params.id);
+  log('INFO', 'ADMIN', req.user.username, task.id, `Task "${task.name}" moved to bin`, null);
+  audit(req.user.username, 'TASK_DELETED', `Task "${task.name}" soft deleted`);
+  res.json({ ok: true });
+});
+
+// POST /api/tasks/:id/restore
+router.post('/:id/restore', requireAuth, (req, res) => {
+  const task = db.prepare('SELECT * FROM tasks WHERE id=? AND deleted_at IS NOT NULL').get(req.params.id);
+  if (!task) return res.status(404).json({ error: 'Task not found in bin' });
+
+  db.prepare(`UPDATE tasks SET deleted_at=NULL, updated_at=datetime('now') WHERE id=?`)
+    .run(req.params.id);
+  log('INFO', 'ADMIN', req.user.username, task.id, `Task "${task.name}" restored`, null);
+  audit(req.user.username, 'TASK_RESTORED', `Task "${task.name}" restored`);
+  res.json({ ok: true });
+});
+
+// DELETE /api/tasks/:id/hard
+router.delete('/:id/hard', requireAuth, (req, res) => {
+  const task = db.prepare('SELECT * FROM tasks WHERE id=?').get(req.params.id);
+  if (!task) return res.status(404).json({ error: 'Task not found' });
+
+  db.prepare('DELETE FROM tasks WHERE id=?').run(req.params.id);
+  log('INFO', 'ADMIN', req.user.username, null, `Task "${task.name}" permanently deleted`, null);
+  audit(req.user.username, 'TASK_HARD_DELETED', `Task "${task.name}" permanently deleted`);
+  res.json({ ok: true });
+});
+
+// POST /api/tasks/:id/run
+router.post('/:id/run', requireAuth, async (req, res) => {
+  try {
+    const result = await manualRun(req.params.id, req.user.username);
+    audit(req.user.username, 'MANUAL_RUN', `Manual run task ID ${req.params.id}`);
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// PATCH /api/tasks/:id/email-toggle
+router.patch('/:id/email-toggle', requireAuth, (req, res) => {
+  const task = db.prepare('SELECT * FROM tasks WHERE id=? AND deleted_at IS NULL').get(req.params.id);
+  if (!task) return res.status(404).json({ error: 'Task not found' });
+
+  const newVal = task.email_enabled === 1 ? 0 : 1;
+  db.prepare(`UPDATE tasks SET email_enabled=?, updated_at=datetime('now') WHERE id=?`)
+    .run(newVal, task.id);
+
+  log('INFO', 'ADMIN', req.user.username, task.id,
+    `Email ${newVal ? 'enabled' : 'disabled'} for "${task.name}"`, null);
+  audit(req.user.username, 'EMAIL_TOGGLE',
+    `Email ${newVal ? 'enabled' : 'disabled'} for task "${task.name}"`);
+  res.json({ email_enabled: newVal === 1 });
+});
+
+// PATCH /api/tasks/:id/active-toggle
+router.patch('/:id/active-toggle', requireAuth, (req, res) => {
+  const task = db.prepare('SELECT * FROM tasks WHERE id=? AND deleted_at IS NULL').get(req.params.id);
+  if (!task) return res.status(404).json({ error: 'Task not found' });
+
+  const newVal = (task.is_active === 0 || task.is_active === false) ? 1 : 0;
+  db.prepare(`UPDATE tasks SET is_active=?, updated_at=datetime('now') WHERE id=?`)
+    .run(newVal, task.id);
+
+  // If deactivating — clear any open incident and reset CFC
+  if (newVal === 0) {
+    db.prepare('DELETE FROM incident_state WHERE task_id=?').run(task.id);
+    db.prepare(`UPDATE tasks SET cfc=0, status='OK', updated_at=datetime('now') WHERE id=?`)
+      .run(task.id);
+  }
+
+  log('INFO', 'ADMIN', req.user.username, task.id,
+    `Task "${task.name}" ${newVal ? 'activated' : 'deactivated (paused)'}`, null);
+  audit(req.user.username, 'ACTIVE_TOGGLE',
+    `Task "${task.name}" ${newVal ? 'activated' : 'deactivated'}`);
+  res.json({ is_active: newVal === 1 });
+});
+
+module.exports = router;

@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>NetWatch — Admin</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>body { background: #0d1117; color: #f0f6fc; }</style>
+</head>
+<body class="min-h-screen flex items-center justify-center">
+  <div class="w-full max-w-sm">
+    <div class="rounded-xl border border-gray-700 p-8" style="background:#161b22">
+      <div class="text-center mb-8">
+        <div class="text-3xl mb-2">🔒</div>
+        <div class="text-gray-500 text-sm">Secure Access</div>
+      </div>
+      <div id="errMsg" class="hidden mb-4 px-3 py-2 rounded-lg text-sm bg-red-950 text-red-300 border border-red-800"></div>
+      <div class="space-y-4">
+        <input id="user" type="text" autocomplete="username"
+          placeholder="Username"
+          class="w-full px-4 py-3 rounded-lg border border-gray-700 text-sm focus:outline-none focus:border-blue-500"
+          style="background:#0d1117" />
+        <input id="pass" type="password" autocomplete="current-password"
+          placeholder="Password"
+          class="w-full px-4 py-3 rounded-lg border border-gray-700 text-sm focus:outline-none focus:border-blue-500"
+          style="background:#0d1117" />
+        <button id="loginBtn" onclick="doLogin()"
+          class="w-full py-3 rounded-lg font-semibold text-sm bg-blue-600 hover:bg-blue-500 transition">
+          Sign In
+        </button>
+      </div>
+    </div>
+    <div class="text-center mt-4">
+      <a href="/" class="text-xs text-gray-600 hover:text-gray-400">← Back to dashboard</a>
+    </div>
+  </div>
+
+  <script src="/config.js"></script>
+  <script src="/js/api.js"></script>
+  <script>
+    // Auto-redirect if already logged in
+    API.me().then(() => { window.location = '/admin/dashboard.html'; }).catch(() => {});
+
+    document.getElementById('pass').addEventListener('keydown', e => {
+      if (e.key === 'Enter') doLogin();
+    });
+
+    async function doLogin() {
+      const btn = document.getElementById('loginBtn');
+      const err = document.getElementById('errMsg');
+      err.classList.add('hidden');
+      btn.textContent = 'Signing in…';
+      btn.disabled = true;
+
+      try {
+        await API.login(
+          document.getElementById('user').value,
+          document.getElementById('pass').value
+        );
+        window.location = '/admin/dashboard.html';
+      } catch (e) {
+        err.textContent = e.message || 'Invalid credentials';
+        err.classList.remove('hidden');
+        btn.textContent = 'Sign In';
+        btn.disabled = false;
+      }
+    }
+  </script>
+</body>
+</html>

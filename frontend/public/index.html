@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>NetWatch — Monitor Dashboard</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body { background: #0d1117; color: #f0f6fc; }
+    .pulse-red { animation: pulseRed 1.5s ease-in-out infinite; }
+    @keyframes pulseRed {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(239,68,68,.5); }
+      50%       { box-shadow: 0 0 0 8px rgba(239,68,68,0); }
+    }
+    .card { transition: transform .15s, box-shadow .15s; cursor: pointer; }
+    .card:hover { transform: translateY(-2px); box-shadow: 0 8px 32px rgba(0,0,0,.5); }
+    .modal-bg { background: rgba(0,0,0,.8); backdrop-filter: blur(4px); }
+    pre { white-space: pre-wrap; word-break: break-all; }
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-thumb { background: #30363d; border-radius: 3px; }
+  </style>
+</head>
+<body class="min-h-screen">
+
+<!-- Header -->
+<header class="border-b border-gray-800 px-6 py-4 flex items-center justify-between sticky top-0 z-10"
+        style="background:#161b22;">
+  <div class="flex items-center gap-3">
+    <div class="w-2 h-2 rounded-full" id="statusDot" style="background:#22c55e;"></div>
+    <span class="font-bold text-lg tracking-tight">NetWatch Monitor</span>
+  </div>
+  <div class="flex items-center gap-4">
+    <span id="utcClock" class="text-xs text-gray-500 font-mono"></span>
+    <a href="/admin/login.html" class="text-xs text-gray-500 hover:text-gray-300 transition">Admin →</a>
+  </div>
+</header>
+
+<!-- Summary bar -->
+<div class="px-6 py-3 border-b border-gray-800 flex flex-wrap gap-6 text-sm" style="background:#0d1117;">
+  <span>Total: <b id="totalCount" class="text-white">–</b></span>
+  <span class="text-green-400">OK: <b id="okCount">–</b></span>
+  <span class="text-red-400">FAULT: <b id="faultCount">–</b></span>
+  <span class="text-gray-500">Paused: <b id="inactiveCount">–</b></span>
+  <span class="text-gray-500 text-xs ml-auto" id="lastRefresh"></span>
+</div>
+
+<!-- Task grid -->
+<main class="p-6">
+  <div id="loadingMsg" class="text-center py-20 text-gray-600">
+    <div class="text-3xl mb-3">📡</div>
+    <div>Connecting to monitor…</div>
+  </div>
+  <div id="grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4"></div>
+  <div id="emptyMsg" class="hidden text-center py-20 text-gray-600">
+    <div class="text-4xl mb-3">📡</div>
+    <div>No monitored tasks yet.</div>
+    <div class="text-sm mt-1">Add tasks in the <a href="/admin/login.html" class="text-blue-400">Admin panel</a></div>
+  </div>
+</main>
+
+<!-- Task detail modal (PUBLIC — no auth) -->
+<div id="modal" class="fixed inset-0 z-50 hidden modal-bg flex items-center justify-center p-4">
+  <div class="w-full max-w-2xl rounded-xl border border-gray-700 flex flex-col max-h-[90vh]"
+       style="background:#161b22;">
+    <div class="flex items-start justify-between p-5 border-b border-gray-700">
+      <div>
+        <h2 id="mTitle" class="text-xl font-bold"></h2>
+        <div id="mMeta" class="text-sm text-gray-400 mt-1 flex flex-wrap gap-3"></div>
+      </div>
+      <button onclick="closeModal()" class="text-gray-500 hover:text-white text-xl ml-4 shrink-0">✕</button>
+    </div>
+    <div class="overflow-y-auto flex-1 p-5 space-y-4" id="mBody"></div>
+  </div>
+</div>
+
+<script src="/config.js"></script>
+<script src="/js/api.js"></script>
+<script>
+let tasks = [];
+
+// Live UTC clock
+setInterval(() => {
+  document.getElementById('utcClock').textContent =
+    new Date().toUTCString().replace(' GMT', '') + ' UTC';
+}, 1000);
+
+// ── Helpers ──────────────────────────────────────────────────────────────────
+
+function typeIcon(type) { return type === 'PING' ? '📡' : '🌐'; }
+
+function statusBadge(status) {
+  return status === 'OK'
+    ? `<span class="px-2 py-0.5 rounded-full text-xs font-bold bg-green-900 text-green-300">✓ OK</span>`
+    : `<span class="px-2 py-0.5 rounded-full text-xs font-bold bg-red-900 text-red-300">⚠ FAULT</span>`;
+}
+
+function relTime(iso) {
+  const d = Math.round((Date.now() - new Date(iso)) / 60000);
+  if (d < 1) return 'just now';
+  if (d < 60) return `${d}m ago`;
+  return `${Math.floor(d / 60)}h ${d % 60}m ago`;
+}
+
+function escHtml(s) {
+  return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+// ── Card render ───────────────────────────────────────────────────────────────
+
+function renderCard(t) {
+  const isFault    = t.status === 'FAULT' && t.is_active;
+  const isInactive = !t.is_active;
+  const borderCol  = isFault ? 'border-red-700' : isInactive ? 'border-gray-800' : 'border-gray-700';
+  const bgCol      = isFault ? '#1c1218' : '#161b22';
+  const dimClass   = isInactive ? 'opacity-50' : '';
+
+  return `
+    <div class="card rounded-xl border ${borderCol} p-4 ${isFault ? 'pulse-red' : ''} ${dimClass}"
+         style="background:${bgCol}"
+         onclick="openModal('${t.id}')">
+      <div class="flex items-center justify-between mb-3">
+        <span class="text-lg">${typeIcon(t.type)}</span>
+        ${isInactive
+          ? '<span class="px-2 py-0.5 rounded-full text-xs font-bold bg-gray-800 text-gray-500">⏸ PAUSED</span>'
+          : statusBadge(t.status)}
+      </div>
+      <div class="font-semibold truncate mb-1" title="${escHtml(t.name)}">${escHtml(t.name)}</div>
+      <div class="text-xs text-gray-500 font-mono truncate mb-3">${escHtml(t.target)}</div>
+      <div class="flex items-center justify-between text-xs text-gray-500">
+        <span>${t.last_response_ms != null ? t.last_response_ms + 'ms' : '—'}</span>
+        ${isFault && t.incident_duration
+          ? `<span class="text-red-400 font-medium">Open ${t.incident_duration}</span>` : ''}
+        <span>${t.last_checked ? relTime(t.last_checked) : 'Not checked'}</span>
+      </div>
+    </div>`;
+}
+
+// ── Load tasks ────────────────────────────────────────────────────────────────
+
+async function load() {
+  try {
+    tasks = await API.publicSummary();
+
+    const ok       = tasks.filter(t => t.status === 'OK' && t.is_active).length;
+    const fault    = tasks.filter(t => t.status === 'FAULT' && t.is_active).length;
+    const inactive = tasks.filter(t => !t.is_active).length;
+
+    document.getElementById('totalCount').textContent = tasks.length;
+    document.getElementById('okCount').textContent    = ok;
+    document.getElementById('faultCount').textContent = fault;
+    document.getElementById('inactiveCount').textContent = inactive;
+    document.getElementById('statusDot').style.background =
+      fault > 0 ? '#ef4444' : '#22c55e';
+    document.getElementById('lastRefresh').textContent =
+      'Refreshed ' + relTime(new Date().toISOString());
+
+    document.getElementById('loadingMsg').classList.add('hidden');
+
+    if (tasks.length === 0) {
+      document.getElementById('grid').innerHTML = '';
+      document.getElementById('emptyMsg').classList.remove('hidden');
+      return;
+    }
+    document.getElementById('emptyMsg').classList.add('hidden');
+
+    // Sort: FAULT first, then alphabetical
+    const sorted = [...tasks].sort((a, b) => {
+      if (a.status === b.status) return a.name.localeCompare(b.name);
+      return a.status === 'FAULT' ? -1 : 1;
+    });
+    document.getElementById('grid').innerHTML = sorted.map(renderCard).join('');
+  } catch (e) {
+    document.getElementById('loadingMsg').innerHTML =
+      `<div class="text-4xl mb-3">⚠</div><div class="text-red-400">Cannot reach monitor backend.</div>
+       <div class="text-xs text-gray-600 mt-2">${escHtml(e.message || String(e))}</div>`;
+  }
+}
+
+// ── Task detail modal (public — uses /public/:id endpoint) ────────────────────
+
+async function openModal(id) {
+  const modal = document.getElementById('modal');
+  modal.classList.remove('hidden');
+  document.getElementById('mTitle').textContent = '…';
+  document.getElementById('mMeta').innerHTML    = '';
+  document.getElementById('mBody').innerHTML    =
+    '<div class="text-gray-500 text-sm">Loading…</div>';
+
+  try {
+    // Uses the unauthenticated public endpoint — no login needed
+    const t = await API.publicTaskDetail(id);
+
+    document.getElementById('mTitle').textContent = t.name;
+
+    const statusHtml = t.status === 'FAULT'
+      ? `<span class="text-red-400 font-bold">⚠ FAULT</span>`
+      : `<span class="text-green-400 font-bold">✓ OK</span>`;
+
+    document.getElementById('mMeta').innerHTML =
+      `<span>${typeIcon(t.type)} ${t.type}</span>
+       <span class="font-mono text-blue-400">${escHtml(t.target)}</span>
+       <span>·</span>
+       ${statusHtml}
+       ${t.incident_duration ? `<span class="text-red-400 text-xs">Open ${t.incident_duration}</span>` : ''}`;
+
+    // Incident status box
+    const incBox = t.incident
+      ? `<div class="px-4 py-3 rounded-lg border border-red-800 text-sm" style="background:#1c1218">
+           <div class="text-red-300 font-semibold mb-2">⚠ Active Incident</div>
+           <div class="text-xs text-gray-400 space-y-1">
+             <div>Started: ${new Date(t.incident.t0).toLocaleString()}</div>
+             <div>L1 Alert: ${t.incident.l1_sent_at ? '✓ Sent' : '—'}</div>
+             <div>L2 Alert: ${t.incident.l2_sent_at ? '✓ Sent' : 'Pending (24h)'}</div>
+             <div>L3 Alert: ${t.incident.l3_sent_at ? '✓ Sent' : 'Pending (72h)'}</div>
+           </div>
+         </div>`
+      : `<div class="px-4 py-3 rounded-lg border border-green-900 text-sm text-green-300"
+              style="background:#0d2b0d">✓ No active incident</div>`;
+
+    // Endpoint results (APPLICATION)
+    let endpointsHtml = '';
+    if (t.type === 'APPLICATION' && t.last_endpoint_results?.length) {
+      endpointsHtml = `
+        <div>
+          <div class="text-xs text-gray-500 uppercase tracking-wider mb-2">🔗 Endpoint Results</div>
+          <div class="rounded-lg overflow-hidden border border-gray-700">
+            ${t.last_endpoint_results.map(ep => `
+              <div class="flex items-center gap-2 px-3 py-2 border-b border-gray-800 last:border-0
+                           text-xs ${ep.result === 'FAIL' ? 'bg-red-950/40' : ''}">
+                <span class="font-bold w-8 ${ep.result === 'PASS' ? 'text-green-400' : 'text-red-400'}">${ep.result}</span>
+                <span class="font-mono text-blue-300 flex-1 truncate">${escHtml(ep.url)}</span>
+                ${ep.httpStatus ? `<span class="text-gray-500">HTTP ${ep.httpStatus}</span>` : ''}
+                ${ep.responseMs ? `<span class="text-gray-600">${ep.responseMs}ms</span>` : ''}
+              </div>`).join('')}
+          </div>
+        </div>`;
+    }
+
+    // URLs list (APPLICATION without result data yet)
+    let urlsHtml = '';
+    if (t.type === 'APPLICATION' && t.urls?.length && !t.last_endpoint_results?.length) {
+      urlsHtml = `
+        <div>
+          <div class="text-xs text-gray-500 uppercase tracking-wider mb-2">🔗 Monitored URLs</div>
+          <div class="space-y-1">
+            ${t.urls.map(u => `<div class="font-mono text-xs text-blue-300">
+              ${escHtml(typeof u === 'string' ? u : u.url)}</div>`).join('')}
+          </div>
+        </div>`;
+    }
+
+    // Raw error
+    const errorHtml = t.last_error_raw
+      ? `<div>
+           <div class="text-xs text-gray-500 uppercase tracking-wider mb-2">💻 Last Error</div>
+           <pre class="text-xs text-red-300 rounded-lg p-3"
+                style="background:#0d1117;border-left:3px solid #ef4444">${escHtml(t.last_error_raw)}</pre>
+         </div>`
+      : `<div class="text-xs text-green-400 px-3 py-2 rounded-lg"
+              style="background:#0d2b0d">✓ Last check passed — no errors</div>`;
+
+    // Recent checks
+    const checksHtml = t.checks?.length
+      ? `<div>
+           <div class="text-xs text-gray-500 uppercase tracking-wider mb-2">Recent Checks</div>
+           <div class="rounded-lg overflow-hidden" style="background:#0d1117">
+             ${t.checks.slice(0, 10).map(c => `
+               <div class="flex items-center gap-3 px-3 py-2 border-b border-gray-800 last:border-0 text-xs">
+                 <span class="font-bold w-8 ${c.result === 'PASS' ? 'text-green-400' : 'text-red-400'}">${c.result}</span>
+                 <span class="text-gray-500">${new Date(c.checked_at).toLocaleString()}</span>
+                 ${c.response_ms != null ? `<span class="text-gray-600 ml-auto">${c.response_ms}ms</span>` : ''}
+               </div>`).join('')}
+           </div>
+         </div>` : '';
+
+    document.getElementById('mBody').innerHTML =
+      [incBox, endpointsHtml || urlsHtml, errorHtml, checksHtml].filter(Boolean).join('');
+
+  } catch (e) {
+    document.getElementById('mBody').innerHTML =
+      `<div class="text-red-400 text-sm">Failed to load task detail: ${escHtml(e.message)}</div>`;
+  }
+}
+
+function closeModal() {
+  document.getElementById('modal').classList.add('hidden');
+}
+
+// Close on backdrop click or Escape
+document.getElementById('modal').addEventListener('click', e => {
+  if (e.target === document.getElementById('modal')) closeModal();
+});
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
+
+// Initial load + auto-refresh every 30s
+load();
+setInterval(load, 30000);
+</script>
+</body>
+</html>

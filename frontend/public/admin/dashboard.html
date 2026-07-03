@@ -1,0 +1,911 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>NetWatch — Admin Dashboard</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body { background: #0d1117; color: #f0f6fc; }
+    .modal-bg { background: rgba(0,0,0,.8); backdrop-filter: blur(4px); }
+    pre { white-space: pre-wrap; word-break: break-all; }
+    ::-webkit-scrollbar { width: 6px; } ::-webkit-scrollbar-thumb { background: #30363d; border-radius: 3px; }
+    .tab-active { border-bottom: 2px solid #3b82f6; color: #f0f6fc; }
+    .tab-inactive { color: #6e7681; border-bottom: 2px solid transparent; }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col">
+
+<!-- Top bar -->
+<header class="border-b border-gray-800 px-6 py-3 flex items-center justify-between sticky top-0 z-20" style="background:#161b22;">
+  <div class="flex items-center gap-4">
+    <span class="font-bold text-base">⚙ NetWatch Admin</span>
+    <a href="/" class="text-xs text-gray-500 hover:text-gray-300">View Dashboard →</a>
+  </div>
+  <div class="flex items-center gap-4">
+    <span id="userLabel" class="text-xs text-gray-500"></span>
+    <button onclick="doLogout()" class="text-xs text-gray-500 hover:text-red-400 transition">Logout</button>
+  </div>
+</header>
+
+<!-- Tabs -->
+<div class="px-6 flex gap-0 border-b border-gray-800" style="background:#161b22;">
+  <button class="px-4 py-3 text-sm font-medium tab-active" onclick="setTab('tasks',this)">Tasks</button>
+  <button class="px-4 py-3 text-sm font-medium tab-inactive" onclick="setTab('bin',this)">Recycle Bin</button>
+  <button class="px-4 py-3 text-sm font-medium tab-inactive" onclick="setTab('backup',this)">Backup</button>
+  <button class="px-4 py-3 text-sm font-medium tab-inactive" onclick="setTab('logs',this)">Logs</button>
+  <button class="px-4 py-3 text-sm font-medium tab-inactive" onclick="setTab('settings',this)">Settings</button>
+</div>
+
+<main class="flex-1 p-6 space-y-4">
+
+  <!-- ── Tasks tab ── -->
+  <div id="tab-tasks">
+    <div class="flex items-center justify-between mb-4">
+      <h2 class="font-semibold text-lg">Monitored Tasks</h2>
+      <button onclick="openTaskModal(null)"
+        class="px-4 py-2 rounded-lg text-sm font-medium bg-blue-600 hover:bg-blue-500 transition">
+        + Add Task
+      </button>
+    </div>
+    <div class="rounded-xl border border-gray-700 overflow-hidden" style="background:#161b22;">
+      <table class="w-full text-sm">
+        <thead class="text-xs uppercase text-gray-500 border-b border-gray-700">
+          <tr style="background:#0d1117;">
+            <th class="text-left px-4 py-3">Name</th>
+            <th class="text-left px-4 py-3">Type</th>
+            <th class="text-left px-4 py-3">Target</th>
+            <th class="text-left px-4 py-3">Interval</th>
+            <th class="text-left px-4 py-3">N</th>
+            <th class="text-left px-4 py-3">Status</th>
+            <th class="text-left px-4 py-3">Active</th>
+            <th class="text-left px-4 py-3">Email</th>
+            <th class="text-left px-4 py-3">Last Check</th>
+            <th class="px-4 py-3">Actions</th>
+          </tr>
+        </thead>
+        <tbody id="tasksBody">
+          <tr><td colspan="10" class="px-4 py-8 text-center text-gray-600">Loading…</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ── Bin tab ── -->
+  <div id="tab-bin" class="hidden">
+    <h2 class="font-semibold text-lg mb-4">Recycle Bin</h2>
+    <div class="rounded-xl border border-gray-700 overflow-hidden" style="background:#161b22;">
+      <table class="w-full text-sm">
+        <thead class="text-xs uppercase text-gray-500 border-b border-gray-700">
+          <tr style="background:#0d1117;">
+            <th class="text-left px-4 py-3">Name</th>
+            <th class="text-left px-4 py-3">Type</th>
+            <th class="text-left px-4 py-3">Target</th>
+            <th class="text-left px-4 py-3">Deleted</th>
+            <th class="px-4 py-3">Actions</th>
+          </tr>
+        </thead>
+        <tbody id="binBody"><tr><td colspan="5" class="px-4 py-8 text-center text-gray-600">Loading…</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ── Backup tab ── -->
+  <div id="tab-backup" class="hidden">
+    <h2 class="font-semibold text-lg mb-4">Backup & Restore</h2>
+    <div class="grid md:grid-cols-2 gap-4">
+      <div class="rounded-xl border border-gray-700 p-6" style="background:#161b22;">
+        <h3 class="font-medium mb-2">📥 Export</h3>
+        <p class="text-sm text-gray-500 mb-4">Download all tasks as an Excel file (.xlsx).</p>
+        <a id="exportBtn" href="#" onclick="doExport(event)"
+          class="inline-block px-4 py-2 rounded-lg text-sm font-medium bg-green-700 hover:bg-green-600 transition">
+          Download Backup (.xlsx)
+        </a>
+      </div>
+      <div class="rounded-xl border border-gray-700 p-6" style="background:#161b22;">
+        <h3 class="font-medium mb-2">📤 Import</h3>
+        <p class="text-sm text-gray-500 mb-4">Upload an .xlsx backup to upsert tasks.</p>
+        <input type="file" id="importFile" accept=".xlsx" class="hidden" onchange="doImport(this)">
+        <button onclick="document.getElementById('importFile').click()"
+          class="px-4 py-2 rounded-lg text-sm font-medium bg-blue-700 hover:bg-blue-600 transition">
+          Choose File & Import
+        </button>
+        <div id="importResult" class="mt-3 text-sm"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Logs tab ── -->
+  <div id="tab-logs" class="hidden">
+    <div class="flex flex-wrap items-end gap-3 mb-4">
+      <h2 class="font-semibold text-lg flex-1">Application Logs</h2>
+      <select id="logLevel" class="px-3 py-2 rounded-lg text-sm border border-gray-700" style="background:#161b22;">
+        <option value="">All Levels</option>
+        <option>INFO</option><option>WARN</option><option>ERROR</option>
+      </select>
+      <select id="logCategory" class="px-3 py-2 rounded-lg text-sm border border-gray-700" style="background:#161b22;">
+        <option value="">All Categories</option>
+        <option>MONITORING</option><option>EMAIL</option><option>AUTH</option>
+        <option>ADMIN</option><option>SYSTEM</option><option>BACKUP</option>
+      </select>
+      <input id="logTask" placeholder="Task name…" class="px-3 py-2 rounded-lg text-sm border border-gray-700 w-40" style="background:#161b22;">
+      <button onclick="loadLogs()" class="px-4 py-2 rounded-lg text-sm bg-gray-700 hover:bg-gray-600 transition">Apply</button>
+    </div>
+    <div class="rounded-xl border border-gray-700 overflow-hidden" style="background:#161b22;">
+      <table class="w-full text-xs">
+        <thead class="text-gray-500 uppercase border-b border-gray-700">
+          <tr style="background:#0d1117;">
+            <th class="text-left px-3 py-3 w-44">Time</th>
+            <th class="text-left px-3 py-3 w-16">Level</th>
+            <th class="text-left px-3 py-3 w-28">Category</th>
+            <th class="text-left px-3 py-3 w-24">Actor</th>
+            <th class="text-left px-3 py-3 w-32">Task</th>
+            <th class="text-left px-3 py-3">Message</th>
+          </tr>
+        </thead>
+        <tbody id="logsBody"><tr><td colspan="6" class="px-4 py-8 text-center text-gray-600">Click Apply to load logs</td></tr></tbody>
+      </table>
+    </div>
+    <div class="mt-2 flex gap-2">
+      <button id="logsPrev" onclick="changePage(-1)" class="px-3 py-1 text-xs rounded bg-gray-700 hover:bg-gray-600 transition">← Prev</button>
+      <span id="logsPageLabel" class="text-xs text-gray-500 px-2 py-1">Page 1</span>
+      <button id="logsNext" onclick="changePage(1)" class="px-3 py-1 text-xs rounded bg-gray-700 hover:bg-gray-600 transition">Next →</button>
+    </div>
+  </div>
+
+  <!-- ── Settings tab ── -->
+  <div id="tab-settings" class="hidden">
+    <h2 class="font-semibold text-lg mb-4">Settings & Health</h2>
+    <div class="grid md:grid-cols-2 gap-4">
+
+      <!-- Mail test -->
+      <div class="rounded-xl border border-gray-700 p-5" style="background:#161b22;">
+        <h3 class="font-medium mb-1">📧 Mail Test</h3>
+        <p class="text-xs text-gray-500 mb-3">
+          Sends via system <code class="text-blue-400">mail</code> binary → container Postfix → relay.
+          No SMTP config needed.
+        </p>
+        <div class="flex gap-2">
+          <input id="testEmailAddr" type="email" placeholder="you@company.com"
+            class="flex-1 px-3 py-2 rounded-lg text-sm border border-gray-700" style="background:#0d1117;">
+          <button onclick="sendTestMail()" class="px-4 py-2 rounded-lg text-sm bg-blue-700 hover:bg-blue-600 transition">Send</button>
+        </div>
+        <div id="testMailResult" class="mt-2 text-sm"></div>
+      </div>
+
+      <!-- System health -->
+      <div class="rounded-xl border border-gray-700 p-5" style="background:#161b22;">
+        <h3 class="font-medium mb-3">🔍 System Health</h3>
+        <div id="healthInfo" class="text-sm text-gray-400 space-y-1">Loading…</div>
+        <button onclick="loadHealth()" class="mt-3 text-xs text-blue-400 hover:text-blue-300">↻ Refresh</button>
+      </div>
+    </div>
+
+    <!-- Audit log -->
+    <div class="mt-4 rounded-xl border border-gray-700 overflow-hidden" style="background:#161b22;">
+      <div class="flex items-center justify-between px-4 py-3 border-b border-gray-700">
+        <span class="text-sm font-medium">Audit Log</span>
+        <span class="text-xs text-gray-500" id="auditMeta"></span>
+      </div>
+      <div id="auditBody" class="divide-y divide-gray-800 max-h-72 overflow-y-auto text-xs text-gray-400"></div>
+      <div class="px-4 py-2 flex gap-2 border-t border-gray-800">
+        <button id="auditPrev" onclick="changeAuditPage(-1)" class="px-3 py-1 text-xs rounded bg-gray-700 hover:bg-gray-600">← Prev</button>
+        <span id="auditPageLabel" class="text-xs text-gray-500 px-2 py-1">Page 1</span>
+        <button id="auditNext" onclick="changeAuditPage(1)" class="px-3 py-1 text-xs rounded bg-gray-700 hover:bg-gray-600">Next →</button>
+      </div>
+    </div>
+  </div>
+
+</main>
+
+<!-- Task modal -->
+<div id="taskModal" class="fixed inset-0 z-50 hidden modal-bg flex items-center justify-center p-4">
+  <div class="w-full max-w-xl rounded-xl border border-gray-700 flex flex-col max-h-[90vh]" style="background:#161b22;">
+    <div class="flex items-center justify-between px-6 py-4 border-b border-gray-700">
+      <h3 id="tmTitle" class="font-semibold">Add Task</h3>
+      <button onclick="closeTaskModal()" class="text-gray-500 hover:text-white">✕</button>
+    </div>
+    <div class="overflow-y-auto flex-1 p-6">
+      <form id="taskForm" class="space-y-4" onsubmit="return false">
+        <input type="hidden" id="taskId">
+
+        <!-- Name + Type -->
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs text-gray-500 mb-1">Task Name *</label>
+            <input id="fName" required class="w-full px-3 py-2 rounded-lg text-sm border border-gray-700" style="background:#0d1117;">
+          </div>
+          <div>
+            <label class="block text-xs text-gray-500 mb-1">Type *</label>
+            <select id="fType" onchange="onTypeChange()" class="w-full px-3 py-2 rounded-lg text-sm border border-gray-700" style="background:#0d1117;">
+              <option value="PING">Ping (ICMP)</option>
+              <option value="APPLICATION">Application (HTTP)</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Target -->
+        <div>
+          <label class="block text-xs text-gray-500 mb-1" id="targetLabel">Target IP / Hostname *</label>
+          <input id="fTarget" required class="w-full px-3 py-2 rounded-lg text-sm border border-gray-700" style="background:#0d1117;">
+        </div>
+
+        <!-- Ping-only fields -->
+        <div id="pingFields" class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs text-gray-500 mb-1">OS Type</label>
+            <select id="fOsType" class="w-full px-3 py-2 rounded-lg text-sm border border-gray-700" style="background:#0d1117;">
+              <option>Linux</option><option>Windows</option><option>Other</option>
+            </select>
+          </div>
+          <div class="flex items-end">
+            <label class="flex items-center gap-2 text-sm cursor-pointer">
+              <input id="fIsVm" type="checkbox" class="w-4 h-4">
+              <span class="text-gray-400">Is Virtual Machine</span>
+            </label>
+          </div>
+        </div>
+
+        <!-- URL list (Application only) -->
+        <div id="urlFields" class="hidden">
+          <label class="block text-xs text-gray-500 mb-2">URLs to monitor *</label>
+          <div id="urlList" class="space-y-2"></div>
+          <button type="button" onclick="addUrlRow()" class="mt-2 text-xs text-blue-400 hover:text-blue-300">+ Add URL</button>
+        </div>
+
+        <!-- Interval + N Threshold -->
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs text-gray-500 mb-1">Check Interval (min, min 3) *</label>
+            <input id="fInterval" type="number" min="3" value="5" required
+              class="w-full px-3 py-2 rounded-lg text-sm border border-gray-700" style="background:#0d1117;">
+          </div>
+          <div>
+            <label class="block text-xs text-gray-500 mb-1">N Threshold (failures → FAULT)</label>
+            <input id="fN" type="number" min="1" value="2"
+              class="w-full px-3 py-2 rounded-lg text-sm border border-gray-700" style="background:#0d1117;">
+          </div>
+        </div>
+
+        <!-- Email section -->
+        <div class="border border-gray-700 rounded-lg p-4 space-y-3">
+          <div class="flex items-center justify-between">
+            <span class="text-sm font-medium">📧 Email Alerts</span>
+            <label class="flex items-center gap-2 text-sm cursor-pointer">
+              <input id="fEmailEnabled" type="checkbox" class="w-4 h-4" checked onchange="onEmailToggle()">
+              <span class="text-gray-400">Enabled</span>
+            </label>
+          </div>
+          <div id="emailFields" class="space-y-3">
+            <div>
+              <label class="block text-xs text-gray-500 mb-1">L1 — Immediate (at FAULT, up to 3 addresses)</label>
+              <input id="fL1" placeholder="email1@example.com, email2@example.com"
+                class="w-full px-3 py-2 rounded-lg text-sm border border-gray-700" style="background:#0d1117;">
+            </div>
+            <div>
+              <label class="block text-xs text-gray-500 mb-1">L2 — Escalation (after 24h, up to 3 addresses, optional)</label>
+              <input id="fL2" placeholder="manager@example.com"
+                class="w-full px-3 py-2 rounded-lg text-sm border border-gray-700" style="background:#0d1117;">
+            </div>
+            <div>
+              <label class="block text-xs text-gray-500 mb-1">L3 — Critical (after 72h, up to 3 addresses, optional)</label>
+              <input id="fL3" placeholder="director@example.com"
+                class="w-full px-3 py-2 rounded-lg text-sm border border-gray-700" style="background:#0d1117;">
+            </div>
+          </div>
+        </div>
+
+        <div id="formErr" class="hidden px-3 py-2 rounded-lg text-sm bg-red-950 text-red-300 border border-red-800"></div>
+
+        <div class="flex gap-2 pt-2">
+          <button type="button" onclick="testBeforeSave()"
+            class="px-4 py-2 rounded-lg text-sm border border-gray-600 hover:border-gray-400 transition">
+            Test Connection
+          </button>
+          <button type="button" onclick="saveTask()"
+            class="flex-1 px-4 py-2 rounded-lg text-sm font-medium bg-blue-600 hover:bg-blue-500 transition">
+            Save Task
+          </button>
+        </div>
+        <div id="testResult" class="text-sm"></div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Task detail modal -->
+<div id="detailModal" class="fixed inset-0 z-50 hidden modal-bg flex items-center justify-center p-4">
+  <div class="w-full max-w-2xl rounded-xl border border-gray-700 flex flex-col max-h-[90vh]" style="background:#161b22;">
+    <div class="flex items-center justify-between px-6 py-4 border-b border-gray-700">
+      <h3 id="dtTitle" class="font-semibold">Task Detail</h3>
+      <button onclick="closeDetailModal()" class="text-gray-500 hover:text-white">✕</button>
+    </div>
+    <div id="dtBody" class="overflow-y-auto flex-1 p-6 space-y-4 text-sm"></div>
+  </div>
+</div>
+
+<script src="/config.js"></script>
+<script src="/js/api.js"></script>
+<script>
+// ── Auth guard ────────────────────────────────────────────────────────────────
+API.me().then(u => {
+  document.getElementById('userLabel').textContent = '👤 ' + u.username;
+}).catch(() => { window.location = '/admin/login.html'; });
+
+async function doLogout() {
+  await API.logout().catch(() => {});
+  window.location = '/admin/login.html';
+}
+
+// ── Tab system ────────────────────────────────────────────────────────────────
+const tabs = ['tasks', 'bin', 'backup', 'logs', 'settings'];
+function setTab(name, btn) {
+  tabs.forEach(t => {
+    document.getElementById('tab-'+t).classList.toggle('hidden', t !== name);
+  });
+  document.querySelectorAll('[onclick^="setTab"]').forEach(b => {
+    b.className = b.className.replace('tab-active','tab-inactive');
+  });
+  btn.className = btn.className.replace('tab-inactive','tab-active');
+  if (name === 'bin') loadBin();
+  if (name === 'logs') loadLogs();
+  if (name === 'settings') { loadHealth(); loadAudit(); }
+}
+
+// ── Tasks ─────────────────────────────────────────────────────────────────────
+let allTasks = [];
+
+async function loadTasks() {
+  try {
+    allTasks = await API.tasks();
+    renderTasks();
+  } catch (e) {
+    if (e.status === 401) window.location = '/admin/login.html';
+  }
+}
+
+function renderTasks() {
+  const body = document.getElementById('tasksBody');
+  if (!allTasks.length) {
+    body.innerHTML = `<tr><td colspan="10" class="px-4 py-8 text-center text-gray-600">No tasks yet. Click + Add Task.</td></tr>`;
+    return;
+  }
+  body.innerHTML = allTasks.map(t => {
+    const inactive = !t.is_active;
+    const rowDim = inactive ? 'opacity-50' : '';
+    return `
+    <tr class="border-t border-gray-800 hover:bg-gray-800/30 cursor-pointer ${rowDim}" onclick="openDetail('${t.id}')">
+      <td class="px-4 py-3 font-medium">
+        ${escHtml(t.name)}
+        ${inactive ? '<span class="ml-1 px-1.5 py-0.5 rounded text-xs bg-gray-800 text-gray-500">paused</span>' : ''}
+      </td>
+      <td class="px-4 py-3 text-gray-400 text-xs">${t.type === 'PING' ? '📡 Ping' : '🌐 App'}</td>
+      <td class="px-4 py-3 font-mono text-xs text-blue-400">${escHtml(t.target)}</td>
+      <td class="px-4 py-3 text-gray-400 text-xs">${t.interval_min}m</td>
+      <td class="px-4 py-3 text-gray-400 text-xs">${t.n_threshold}</td>
+      <td class="px-4 py-3">
+        ${inactive
+          ? '<span class="px-2 py-0.5 rounded-full text-xs bg-gray-800 text-gray-500 font-bold">—</span>'
+          : t.status === 'OK'
+            ? '<span class="px-2 py-0.5 rounded-full text-xs bg-green-900 text-green-300 font-bold">OK</span>'
+            : '<span class="px-2 py-0.5 rounded-full text-xs bg-red-900 text-red-300 font-bold">FAULT</span>'}
+      </td>
+      <td class="px-4 py-3" onclick="event.stopPropagation()">
+        <button onclick="toggleActive('${t.id}',event)" title="${t.is_active ? 'Pause monitoring' : 'Resume monitoring'}"
+          class="px-2 py-0.5 rounded text-xs ${t.is_active ? 'bg-green-900 text-green-300' : 'bg-gray-800 text-gray-500'}">
+          ${t.is_active ? '▶ ON' : '⏸ OFF'}
+        </button>
+      </td>
+      <td class="px-4 py-3" onclick="event.stopPropagation()">
+        <button onclick="toggleEmail('${t.id}',event)"
+          class="px-2 py-0.5 rounded text-xs ${t.email_enabled ? 'bg-blue-900 text-blue-300' : 'bg-gray-800 text-gray-500'}">
+          ${t.email_enabled ? '✉ ON' : '✉ OFF'}
+        </button>
+      </td>
+      <td class="px-4 py-3 text-xs text-gray-500">${t.last_checked ? relTime(t.last_checked) : '—'}</td>
+      <td class="px-4 py-3 text-right" onclick="event.stopPropagation()">
+        <div class="flex items-center justify-end gap-1">
+          <button onclick="runTask('${t.id}')" title="Run now" ${inactive ? 'disabled' : ''}
+            class="px-2 py-1 text-xs rounded ${inactive ? 'bg-gray-800 text-gray-600 cursor-not-allowed' : 'bg-gray-700 hover:bg-gray-600'}">▶</button>
+          <button onclick="openTaskModal('${t.id}')" title="Edit"
+            class="px-2 py-1 text-xs rounded bg-gray-700 hover:bg-gray-600">✎</button>
+          <button onclick="deleteTask('${t.id}','${escHtml(t.name)}')" title="Delete"
+            class="px-2 py-1 text-xs rounded bg-red-900 hover:bg-red-800 text-red-300">🗑</button>
+        </div>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+async function toggleActive(id, e) {
+  e.stopPropagation();
+  await API.toggleActive(id);
+  loadTasks();
+}
+
+async function toggleEmail(id, e) {
+  e.stopPropagation();
+  await API.toggleEmail(id);
+  loadTasks();
+}
+
+async function runTask(id) {
+  try {
+    const res = await API.runTask(id);
+    alert(`Run result: ${res.result}\n${res.errorRaw || ''}`);
+    loadTasks();
+  } catch (e) { alert('Run failed: ' + e.message); }
+}
+
+async function deleteTask(id, name) {
+  if (!confirm(`Move "${name}" to Recycle Bin?`)) return;
+  await API.deleteTask(id);
+  loadTasks();
+}
+
+// ── Bin ───────────────────────────────────────────────────────────────────────
+
+async function loadBin() {
+  const bin = await API.tasksBin().catch(() => []);
+  const body = document.getElementById('binBody');
+  if (!bin.length) {
+    body.innerHTML = `<tr><td colspan="5" class="px-4 py-8 text-center text-gray-600">Recycle bin is empty.</td></tr>`;
+    return;
+  }
+  body.innerHTML = bin.map(t => `
+    <tr class="border-t border-gray-800">
+      <td class="px-4 py-3">${escHtml(t.name)}</td>
+      <td class="px-4 py-3 text-gray-400 text-xs">${t.type}</td>
+      <td class="px-4 py-3 font-mono text-xs text-gray-500">${escHtml(t.target)}</td>
+      <td class="px-4 py-3 text-xs text-gray-500">${t.deleted_at ? new Date(t.deleted_at).toLocaleString() : '—'}</td>
+      <td class="px-4 py-3 text-right">
+        <button onclick="restoreTask('${t.id}')" class="px-2 py-1 text-xs rounded bg-green-800 hover:bg-green-700 text-green-300 mr-1">Restore</button>
+        <button onclick="hardDelete('${t.id}','${escHtml(t.name)}')" class="px-2 py-1 text-xs rounded bg-red-900 hover:bg-red-800 text-red-300">Delete Forever</button>
+      </td>
+    </tr>`).join('');
+}
+
+async function restoreTask(id) {
+  await API.restoreTask(id);
+  loadBin(); loadTasks();
+}
+
+async function hardDelete(id, name) {
+  if (!confirm(`Permanently delete "${name}"? This cannot be undone.`)) return;
+  await API.hardDelete(id);
+  loadBin();
+}
+
+// ── Backup ────────────────────────────────────────────────────────────────────
+
+function doExport(e) {
+  e.preventDefault();
+  window.open(API.exportUrl(), '_blank');
+}
+
+async function doImport(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const res = document.getElementById('importResult');
+  res.textContent = 'Importing…';
+  try {
+    const data = await API.importXlsx(file);
+    res.innerHTML = `<span class="text-green-400">✓ ${data.inserted} inserted, ${data.updated} updated</span>` +
+      (data.errors?.length ? `<br><span class="text-red-400">Errors: ${data.errors.join('; ')}</span>` : '');
+    loadTasks();
+  } catch (e) {
+    res.innerHTML = `<span class="text-red-400">Import failed: ${e.message}</span>`;
+  }
+  input.value = '';
+}
+
+// ── Logs ──────────────────────────────────────────────────────────────────────
+
+let logsPage = 0;
+
+async function loadLogs() {
+  logsPage = 0;
+  await _fetchLogs();
+}
+
+async function _fetchLogs() {
+  const q = {
+    level:     document.getElementById('logLevel').value,
+    category:  document.getElementById('logCategory').value,
+    task_name: document.getElementById('logTask').value,
+    page:      logsPage,
+  };
+  try {
+    const data = await API.logs(q);
+    const body = document.getElementById('logsBody');
+
+    if (!data.logs.length) {
+      body.innerHTML = `<tr><td colspan="6" class="px-4 py-6 text-center text-gray-600">No logs found</td></tr>`;
+    } else {
+      body.innerHTML = data.logs.map(l => {
+        const levelClass = l.level === 'ERROR' ? 'text-red-400' : l.level === 'WARN' ? 'text-yellow-400' : 'text-green-400';
+        const rowBg = l.level === 'ERROR' ? 'bg-red-950/20' : l.level === 'WARN' ? 'bg-yellow-950/10' : '';
+        return `
+          <tr class="border-t border-gray-800 ${rowBg} hover:bg-gray-800/40 cursor-pointer"
+              onclick="toggleLogDetail(this, ${JSON.stringify(escHtml(l.detail || ''))})">
+            <td class="px-3 py-2 text-gray-500 whitespace-nowrap">${new Date(l.created_at).toLocaleString()}</td>
+            <td class="px-3 py-2 font-bold ${levelClass}">${l.level}</td>
+            <td class="px-3 py-2 text-gray-400">${l.category}</td>
+            <td class="px-3 py-2 text-gray-400">${l.actor || ''}</td>
+            <td class="px-3 py-2 text-blue-400">${l.task_name || ''}</td>
+            <td class="px-3 py-2 text-gray-300">${escHtml(l.message)}</td>
+          </tr>
+          <tr class="log-detail hidden border-t border-gray-900">
+            <td colspan="6" class="px-3 pb-2">
+              <pre class="text-xs text-gray-500 rounded p-2" style="background:#0a0e14"></pre>
+            </td>
+          </tr>`;
+      }).join('');
+    }
+
+    const from = logsPage * data.pageSize + 1;
+    const to   = Math.min((logsPage + 1) * data.pageSize, data.total);
+    document.getElementById('logsPageLabel').textContent =
+      `${from}–${to} of ${data.total} (cap: ${data.limits.max})`;
+    document.getElementById('logsPrev').disabled = logsPage === 0;
+    document.getElementById('logsNext').disabled = logsPage >= data.totalPages - 1;
+  } catch (e) { console.error('Logs error', e); }
+}
+
+function toggleLogDetail(row, detail) {
+  const next = row.nextElementSibling;
+  if (!next?.classList.contains('log-detail')) return;
+  const hidden = next.classList.contains('hidden');
+  next.classList.toggle('hidden');
+  if (hidden && detail) next.querySelector('pre').textContent = detail;
+}
+
+function changePage(dir) {
+  logsPage = Math.max(0, logsPage + dir);
+  _fetchLogs();
+}
+
+// ── Audit ─────────────────────────────────────────────────────────────────────
+
+let auditPage = 0;
+
+async function loadAudit() {
+  auditPage = 0;
+  await _fetchAudit();
+}
+
+async function _fetchAudit() {
+  const data = await API.audit({ page: auditPage }).catch(() => ({ logs: [], total: 0, totalPages: 1, limits: {} }));
+  document.getElementById('auditMeta').textContent =
+    `${data.total} total (cap: ${data.limits?.max || 150})`;
+  document.getElementById('auditBody').innerHTML =
+    data.logs.length
+      ? data.logs.map(l => `
+          <div class="px-4 py-2 flex items-start gap-3 hover:bg-gray-800/30">
+            <span class="text-gray-600 whitespace-nowrap shrink-0">${new Date(l.created_at).toLocaleString()}</span>
+            <span class="text-blue-400 whitespace-nowrap shrink-0">${l.actor}</span>
+            <span class="text-gray-400 whitespace-nowrap shrink-0">${l.action}</span>
+            <span class="text-gray-500 truncate">${l.detail || ''}</span>
+          </div>`).join('')
+      : '<div class="px-4 py-4 text-gray-600">No audit entries.</div>';
+
+  document.getElementById('auditPageLabel').textContent = `Page ${auditPage + 1} / ${data.totalPages || 1}`;
+  document.getElementById('auditPrev').disabled = auditPage === 0;
+  document.getElementById('auditNext').disabled = auditPage >= (data.totalPages || 1) - 1;
+}
+
+function changeAuditPage(dir) {
+  auditPage = Math.max(0, auditPage + dir);
+  _fetchAudit();
+}
+
+// ── Settings ──────────────────────────────────────────────────────────────────
+
+async function loadHealth() {
+  try {
+    const h = await API.health();
+    const mailOk = h.mail?.binaryOk;
+    const pfxOk  = h.mail?.postfix === 'running';
+    const mailColor = mailOk ? 'text-green-400' : 'text-red-400';
+    const pfxColor  = pfxOk  ? 'text-green-400' : 'text-yellow-400';
+
+    document.getElementById('healthInfo').innerHTML = `
+      <div>Monitor Host: <b class="text-white">${h.monitorHost}</b></div>
+      <div>Active Tasks: <b class="text-white">${h.activeTasks}</b>
+        <span class="${h.faultTasks > 0 ? 'text-red-400' : 'text-gray-600'}">(${h.faultTasks} FAULT)</span>
+      </div>
+      <div>Open Incidents: <b class="${h.openIncidents > 0 ? 'text-red-400' : 'text-green-400'}">${h.openIncidents}</b></div>
+      <div>DB Size: <b class="text-white">${h.dbSizeKb} KB</b></div>
+      <div>Uptime: <b class="text-white">${Math.floor(h.uptime / 60)}m ${h.uptime % 60}s</b></div>
+      <div class="pt-2 border-t border-gray-700 space-y-1">
+        <div>Mail Binary: <b class="${mailColor}">${mailOk ? '✓' : '✗'} ${h.mail?.binary}</b></div>
+        <div>Postfix: <b class="${pfxColor}">${h.mail?.postfix}</b>
+          <span class="text-gray-600 text-xs ml-1">relay → ${h.mail?.relayHost}</span>
+        </div>
+        <div class="text-xs text-gray-600">From: ${h.mail?.fromName} &lt;${h.mail?.fromEmail}&gt;</div>
+      </div>
+      <div class="pt-2 border-t border-gray-700 space-y-1 text-xs text-gray-500">
+        <div>App Logs: <b class="text-white">${h.logs?.appLogCount}</b> / ${h.logs?.appLogMax}</div>
+        <div>Audit Logs: <b class="text-white">${h.logs?.auditLogCount}</b> / ${h.logs?.auditLogMax}</div>
+      </div>`;
+  } catch { document.getElementById('healthInfo').textContent = 'Failed to load health info'; }
+}
+
+async function sendTestMail() {
+  const to  = document.getElementById('testEmailAddr').value.trim();
+  const res = document.getElementById('testMailResult');
+  if (!to) { res.innerHTML = '<span class="text-red-400">Enter a recipient email address</span>'; return; }
+  res.innerHTML = '<span class="text-gray-400">Sending…</span>';
+  try {
+    await API.testMail(to);
+    res.innerHTML = `<span class="text-green-400">✓ Test mail sent to ${escHtml(to)}</span>`;
+  } catch (e) {
+    res.innerHTML = `<span class="text-red-400">Failed: ${escHtml(e.message)}</span>`;
+  }
+}
+
+// ── Task modal ────────────────────────────────────────────────────────────────
+
+function openTaskModal(id) {
+  const modal = document.getElementById('taskModal');
+  modal.classList.remove('hidden');
+  document.getElementById('taskId').value = id || '';
+  document.getElementById('formErr').classList.add('hidden');
+  document.getElementById('testResult').innerHTML = '';
+
+  if (id) {
+    const t = allTasks.find(x => x.id === id);
+    if (t) {
+      document.getElementById('tmTitle').textContent = 'Edit Task';
+      document.getElementById('fName').value = t.name;
+      document.getElementById('fType').value = t.type;
+      document.getElementById('fTarget').value = t.target;
+      document.getElementById('fOsType').value = t.os_type || 'Linux';
+      document.getElementById('fIsVm').checked = !!t.is_vm;
+      document.getElementById('fInterval').value = t.interval_min;
+      document.getElementById('fN').value = t.n_threshold;
+      document.getElementById('fL1').value = t.email_l1 || '';
+      document.getElementById('fL2').value = t.email_l2 || '';
+      document.getElementById('fL3').value = t.email_l3 || '';
+      document.getElementById('fEmailEnabled').checked = t.email_enabled !== false;
+
+      // URLs
+      document.getElementById('urlList').innerHTML = '';
+      if (t.type === 'APPLICATION' && t.urls) {
+        t.urls.forEach(u => addUrlRow(typeof u === 'string' ? { url: u } : u));
+      }
+    }
+  } else {
+    document.getElementById('tmTitle').textContent = 'Add Task';
+    document.getElementById('taskForm').reset();
+    document.getElementById('fEmailEnabled').checked = true;
+    document.getElementById('fInterval').value = 5;
+    document.getElementById('fN').value = 2;
+    document.getElementById('urlList').innerHTML = '';
+  }
+  onTypeChange();
+  onEmailToggle();
+}
+
+function closeTaskModal() {
+  document.getElementById('taskModal').classList.add('hidden');
+}
+
+function onTypeChange() {
+  const type = document.getElementById('fType').value;
+  document.getElementById('pingFields').classList.toggle('hidden', type !== 'PING');
+  document.getElementById('urlFields').classList.toggle('hidden', type !== 'APPLICATION');
+  document.getElementById('targetLabel').textContent =
+    type === 'PING' ? 'Target IP / Hostname *' : 'Server IP *';
+}
+
+function onEmailToggle() {
+  const en = document.getElementById('fEmailEnabled').checked;
+  document.getElementById('emailFields').classList.toggle('opacity-50', !en);
+}
+
+let urlRowId = 0;
+function addUrlRow(data = {}) {
+  const id = ++urlRowId;
+  const row = document.createElement('div');
+  row.className = 'flex gap-2 items-start';
+  row.id = 'urlRow' + id;
+  row.innerHTML = `
+    <div class="flex-1 space-y-1">
+      <input placeholder="https://example.com/health" value="${escAttr(data.url || '')}"
+        class="url-input w-full px-3 py-2 rounded-lg text-xs border border-gray-700" style="background:#0d1117;">
+      <div class="flex gap-2">
+        <input placeholder="Keyword (opt)" value="${escAttr(data.keyword || '')}"
+          class="url-keyword flex-1 px-2 py-1 rounded text-xs border border-gray-700" style="background:#0d1117;">
+        <input placeholder="Expected status (opt)" value="${escAttr(data.expected_status ? String(data.expected_status) : '')}"
+          type="number" min="100" max="599"
+          class="url-status w-24 px-2 py-1 rounded text-xs border border-gray-700" style="background:#0d1117;">
+        <input placeholder="Timeout s" value="${escAttr(data.timeout_sec ? String(data.timeout_sec) : '')}"
+          type="number" min="1" max="60"
+          class="url-timeout w-20 px-2 py-1 rounded text-xs border border-gray-700" style="background:#0d1117;">
+      </div>
+    </div>
+    <button type="button" onclick="document.getElementById('urlRow${id}').remove()"
+      class="mt-2 text-red-500 hover:text-red-300 text-lg leading-none">×</button>`;
+  document.getElementById('urlList').appendChild(row);
+}
+
+function collectUrls() {
+  const rows = document.getElementById('urlList').querySelectorAll('[id^="urlRow"]');
+  return Array.from(rows).map(row => ({
+    url: row.querySelector('.url-input').value.trim(),
+    keyword: row.querySelector('.url-keyword').value.trim() || null,
+    expected_status: parseInt(row.querySelector('.url-status').value) || null,
+    timeout_sec: parseInt(row.querySelector('.url-timeout').value) || 15,
+  })).filter(u => u.url);
+}
+
+async function testBeforeSave() {
+  const type = document.getElementById('fType').value;
+  const target = document.getElementById('fTarget').value.trim();
+  const urls = type === 'APPLICATION' ? collectUrls() : null;
+  const res = document.getElementById('testResult');
+  res.innerHTML = '<span class="text-gray-400">Testing…</span>';
+
+  try {
+    const data = await API.testTask({ type, target, urls: JSON.stringify(urls) });
+    const ok = data.result === 'PASS';
+    res.innerHTML = `<span class="${ok ? 'text-green-400' : 'text-red-400'}">${ok ? '✓' : '✗'} ${data.result}</span>
+      ${data.responseMs ? ` — ${data.responseMs}ms` : ''}
+      ${data.errorRaw ? `<br><pre class="text-xs text-red-300 mt-1">${escHtml(data.errorRaw)}</pre>` : ''}`;
+    if (data.endpointResults) {
+      res.innerHTML += '<div class="mt-2 space-y-1">' +
+        data.endpointResults.map(ep =>
+          `<div class="text-xs ${ep.result === 'PASS' ? 'text-green-400' : 'text-red-400'}">
+            ${ep.result} ${ep.url} ${ep.errorRaw ? '— ' + ep.errorRaw : ''}
+          </div>`).join('') + '</div>';
+    }
+  } catch (e) {
+    res.innerHTML = `<span class="text-red-400">Test error: ${e.message}</span>`;
+  }
+}
+
+async function saveTask() {
+  const id = document.getElementById('taskId').value;
+  const type = document.getElementById('fType').value;
+  const urls = type === 'APPLICATION' ? collectUrls() : null;
+
+  const payload = {
+    name:          document.getElementById('fName').value.trim(),
+    type,
+    target:        document.getElementById('fTarget').value.trim(),
+    os_type:       document.getElementById('fOsType').value,
+    is_vm:         document.getElementById('fIsVm').checked,
+    interval_min:  parseInt(document.getElementById('fInterval').value),
+    n_threshold:   parseInt(document.getElementById('fN').value),
+    email_l1:      document.getElementById('fL1').value.trim(),
+    email_l2:      document.getElementById('fL2').value.trim(),
+    email_l3:      document.getElementById('fL3').value.trim(),
+    email_enabled: document.getElementById('fEmailEnabled').checked,
+    urls:          urls ? JSON.stringify(urls) : null,
+  };
+
+  const err = document.getElementById('formErr');
+  err.classList.add('hidden');
+
+  try {
+    if (id) await API.updateTask(id, payload);
+    else     await API.createTask(payload);
+    closeTaskModal();
+    loadTasks();
+  } catch (e) {
+    err.textContent = e.message || 'Save failed';
+    err.classList.remove('hidden');
+  }
+}
+
+// ── Detail modal ──────────────────────────────────────────────────────────────
+
+async function openDetail(id) {
+  const modal = document.getElementById('detailModal');
+  modal.classList.remove('hidden');
+  document.getElementById('dtTitle').textContent = '…';
+  document.getElementById('dtBody').innerHTML = '<div class="text-gray-500">Loading…</div>';
+
+  try {
+    const t = await API.task(id);
+    document.getElementById('dtTitle').textContent = t.name;
+
+    const incHtml = t.incident ? `
+      <div class="px-3 py-2 rounded-lg border border-red-800 bg-red-950/40 text-sm">
+        <b class="text-red-300">⚠ FAULT</b> — Open since ${new Date(t.incident.t0).toLocaleString()}
+        ${t.incident_duration ? ` (${t.incident_duration})` : ''}
+        <div class="text-xs text-gray-500 mt-1">
+          L1: ${t.incident.l1_sent_at ? '✓ ' + new Date(t.incident.l1_sent_at).toLocaleString() : '—'} ·
+          L2: ${t.incident.l2_sent_at ? '✓ ' + new Date(t.incident.l2_sent_at).toLocaleString() : 'Pending at T0+24h'} ·
+          L3: ${t.incident.l3_sent_at ? '✓ ' + new Date(t.incident.l3_sent_at).toLocaleString() : 'Pending at T0+72h'}
+        </div>
+      </div>` : `<div class="px-3 py-2 rounded-lg border border-green-800 bg-green-950/30 text-sm text-green-300">✓ OK — No active incident</div>`;
+
+    const epHtml = t.type === 'APPLICATION' && t.last_endpoint_results ? `
+      <div>
+        <div class="text-xs text-gray-500 uppercase mb-2">Endpoint Results</div>
+        ${t.last_endpoint_results.map(ep => `
+          <div class="flex items-center gap-2 text-xs px-2 py-1 rounded mb-1 ${ep.result === 'FAIL' ? 'bg-red-950/30' : ''}">
+            <span class="${ep.result === 'PASS' ? 'text-green-400' : 'text-red-400'} w-8 font-bold">${ep.result}</span>
+            <span class="font-mono text-blue-300 flex-1 truncate">${ep.url}</span>
+            ${ep.httpStatus ? `<span class="text-gray-500">HTTP ${ep.httpStatus}</span>` : ''}
+            ${ep.responseMs ? `<span class="text-gray-600">${ep.responseMs}ms</span>` : ''}
+          </div>`).join('')}
+      </div>` : '';
+
+    const errHtml = t.last_error_raw ? `
+      <div>
+        <div class="text-xs text-gray-500 uppercase mb-2">Raw Error</div>
+        <pre class="text-xs text-red-300 rounded p-3" style="background:#0d1117;border-left:3px solid #ef4444">${escHtml(t.last_error_raw)}</pre>
+      </div>` : '';
+
+    const recentChecks = t.checks?.slice(0, 15).map(c => `
+      <div class="flex items-center gap-2 text-xs px-2 py-1">
+        <span class="${c.result === 'PASS' ? 'text-green-400' : 'text-red-400'} w-8 font-bold">${c.result}</span>
+        <span class="text-gray-500">${new Date(c.checked_at).toLocaleString()}</span>
+        ${c.response_ms ? `<span class="text-gray-600 ml-auto">${c.response_ms}ms</span>` : ''}
+      </div>`).join('') || '<div class="text-xs text-gray-600">No checks yet</div>';
+
+    const emailSummary = `
+      <div class="text-xs text-gray-500 space-y-1">
+        <div>Email: <b class="${t.email_enabled ? 'text-green-400' : 'text-gray-600'}">${t.email_enabled ? 'Enabled' : 'Disabled'}</b></div>
+        ${t.email_l1 ? `<div>L1: <span class="text-blue-300">${t.email_l1}</span></div>` : ''}
+        ${t.email_l2 ? `<div>L2: <span class="text-blue-300">${t.email_l2}</span></div>` : ''}
+        ${t.email_l3 ? `<div>L3: <span class="text-blue-300">${t.email_l3}</span></div>` : ''}
+      </div>`;
+
+    document.getElementById('dtBody').innerHTML = `
+      <div class="grid grid-cols-2 gap-2 text-xs text-gray-400">
+        <div>Type: <b class="text-white">${t.type}</b></div>
+        <div>Target: <b class="text-blue-300 font-mono">${t.target}</b></div>
+        <div>Interval: <b class="text-white">${t.interval_min}m</b></div>
+        <div>N Threshold: <b class="text-white">${t.n_threshold}</b></div>
+      </div>
+      ${incHtml}
+      ${epHtml}
+      ${errHtml}
+      ${emailSummary}
+      <div>
+        <div class="text-xs text-gray-500 uppercase mb-2">Recent Checks</div>
+        <div class="rounded-lg overflow-hidden" style="background:#0d1117">${recentChecks}</div>
+      </div>
+      <div class="flex gap-2 pt-2">
+        <button onclick="runTask('${t.id}')" class="px-3 py-2 text-sm rounded-lg bg-gray-700 hover:bg-gray-600 transition">▶ Run Now</button>
+        <button onclick="closeDetailModal();openTaskModal('${t.id}')" class="px-3 py-2 text-sm rounded-lg bg-gray-700 hover:bg-gray-600 transition">✎ Edit</button>
+      </div>`;
+  } catch (e) {
+    document.getElementById('dtBody').innerHTML = `<div class="text-red-400">Failed: ${e.message}</div>`;
+  }
+}
+
+function closeDetailModal() {
+  document.getElementById('detailModal').classList.add('hidden');
+}
+
+// ── Utilities ─────────────────────────────────────────────────────────────────
+function relTime(iso) {
+  const d = Math.round((Date.now() - new Date(iso)) / 60000);
+  if (d < 1) return 'just now';
+  if (d < 60) return `${d}m ago`;
+  return `${Math.floor(d/60)}h ${d%60}m ago`;
+}
+function escHtml(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function escAttr(s) { return String(s).replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
+
+document.getElementById('taskModal').addEventListener('click', e => {
+  if (e.target === document.getElementById('taskModal')) closeTaskModal();
+});
+document.getElementById('detailModal').addEventListener('click', e => {
+  if (e.target === document.getElementById('detailModal')) closeDetailModal();
+});
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') { closeTaskModal(); closeDetailModal(); }
+});
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+loadTasks();
+setInterval(loadTasks, 30000);
+</script>
+</body>
+</html>
