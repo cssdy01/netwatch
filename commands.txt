@@ -1,0 +1,12 @@
+
+git clone https://github.com/cssdy01/netwatch.git
+
+cd netwatch
+
+chmod +x scripts/*.sh
+chmod +x backend/docker/*.sh
+
+./scripts/3_run.sh
+
+
+git pull origin main
