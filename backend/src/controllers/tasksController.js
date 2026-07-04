@@ -1,4 +1,11 @@
-// src/controllers/tasksController.js
+// src/controllers/tasksController.js — Phase 4
+// CRITICAL FIX: POST and PUT handlers now save host_mapping_enabled,
+// host_mapping_hostname, host_mapping_ip to the database.
+// This was the primary reason hostname monitoring never worked even after
+// the admin correctly filled in and saved the mapping in the UI — the
+// fields were simply never written to the DB, so every task appeared to
+// have mapping disabled at check time.
+
 const { Router } = require('express');
 const { v4: uuidv4 } = require('uuid');
 const db = require('../db');
@@ -9,7 +16,7 @@ const { manualRun, testTask } = require('../services/monitoringService');
 
 const router = Router();
 
-// ── Helper ────────────────────────────────────────────────────────────────────
+// ── Helper ─────────────────────────────────────────────────────────────────────
 
 function enrichTask(task) {
   const incident = db.prepare('SELECT * FROM incident_state WHERE task_id=?').get(task.id);
@@ -21,32 +28,44 @@ function enrichTask(task) {
   let incidentDuration = null;
   if (incident) {
     const ms = Date.now() - new Date(incident.t0).getTime();
-    const h = Math.floor(ms / 3600000);
-    const m = Math.floor((ms % 3600000) / 60000);
+    const h  = Math.floor(ms / 3600000);
+    const m  = Math.floor((ms % 3600000) / 60000);
     incidentDuration = h ? `${h}h ${m}m` : `${m}m`;
   }
 
   return {
     ...task,
-    email_enabled: task.email_enabled === 1,
-    is_vm:         task.is_vm === 1,
-    is_active:     task.is_active !== 0,   // default true if null/1
-    urls: task.urls ? JSON.parse(task.urls) : null,
-    last_result: lastCheck?.result || null,
-    last_response_ms: lastCheck?.response_ms || null,
-    last_error_raw: lastCheck?.error_raw || null,
-    last_endpoint_results: lastCheck?.endpoint_results ? JSON.parse(lastCheck.endpoint_results) : null,
-    last_checked_at: lastCheck?.checked_at || null,
-    incident_duration: incidentDuration,
-    t0: incident?.t0 || null,
+    email_enabled:         task.email_enabled === 1,
+    is_vm:                 task.is_vm === 1,
+    is_active:             task.is_active !== 0,
+    // Booleanise host mapping for frontend
+    host_mapping_enabled:  task.host_mapping_enabled === 1,
+    host_mapping_hostname: task.host_mapping_hostname || '',
+    host_mapping_ip:       task.host_mapping_ip       || '',
+    urls:                  task.urls ? JSON.parse(task.urls) : null,
+    last_result:           lastCheck?.result       || null,
+    last_response_ms:      lastCheck?.response_ms  || null,
+    last_error_raw:        lastCheck?.error_raw    || null,
+    last_endpoint_results: lastCheck?.endpoint_results
+                             ? JSON.parse(lastCheck.endpoint_results) : null,
+    last_checked_at:       lastCheck?.checked_at   || null,
+    incident_duration:     incidentDuration,
+    t0:                    incident?.t0             || null,
+    incident: incident ? {
+      t0:           incident.t0,
+      l1_sent_at:   incident.l1_sent_at,
+      l2_sent_at:   incident.l2_sent_at,
+      l3_sent_at:   incident.l3_sent_at,
+      alerted_tiers:incident.alerted_tiers,
+    } : null,
   };
 }
 
-// ── PUBLIC ROUTES — declared BEFORE /:id ─────────────────────────────────────
+// ── PUBLIC ROUTES — declared BEFORE /:id ──────────────────────────────────────
 
 // GET /api/tasks/public/summary
-router.get('/public/summary', (req, res) => {
-  const tasks = db.prepare(`SELECT * FROM tasks WHERE deleted_at IS NULL ORDER BY name`).all();
+router.get('/public/summary', (_req, res) => {
+  const tasks = db.prepare('SELECT * FROM tasks WHERE deleted_at IS NULL ORDER BY name').all();
   res.json(tasks.map(t => {
     const lastCheck = db.prepare(`
       SELECT result, response_ms, checked_at FROM checks
@@ -56,16 +75,16 @@ router.get('/public/summary', (req, res) => {
     let incidentDuration = null;
     if (incident) {
       const ms = Date.now() - new Date(incident.t0).getTime();
-      const h = Math.floor(ms / 3600000);
-      const m = Math.floor((ms % 3600000) / 60000);
+      const h  = Math.floor(ms / 3600000);
+      const m  = Math.floor((ms % 3600000) / 60000);
       incidentDuration = h ? `${h}h ${m}m` : `${m}m`;
     }
     return {
       id: t.id, name: t.name, type: t.type, target: t.target,
       status: t.status, last_checked: t.last_checked,
-      is_active: t.is_active !== 0,
-      last_result: lastCheck?.result || null,
-      last_response_ms: lastCheck?.response_ms || null,
+      is_active:         t.is_active !== 0,
+      last_result:       lastCheck?.result        || null,
+      last_response_ms:  lastCheck?.response_ms   || null,
       incident_duration: incidentDuration,
     };
   }));
@@ -73,7 +92,7 @@ router.get('/public/summary', (req, res) => {
 
 // GET /api/tasks/public/:id
 router.get('/public/:id', (req, res) => {
-  const task = db.prepare(`SELECT * FROM tasks WHERE id=? AND deleted_at IS NULL`).get(req.params.id);
+  const task = db.prepare('SELECT * FROM tasks WHERE id=? AND deleted_at IS NULL').get(req.params.id);
   if (!task) return res.status(404).json({ error: 'Task not found' });
 
   const checks = db.prepare(`
@@ -86,8 +105,8 @@ router.get('/public/:id', (req, res) => {
   let incidentDuration = null;
   if (incident) {
     const ms = Date.now() - new Date(incident.t0).getTime();
-    const h = Math.floor(ms / 3600000);
-    const m = Math.floor((ms % 3600000) / 60000);
+    const h  = Math.floor(ms / 3600000);
+    const m  = Math.floor((ms % 3600000) / 60000);
     incidentDuration = h ? `${h}h ${m}m` : `${m}m`;
   }
 
@@ -95,21 +114,27 @@ router.get('/public/:id', (req, res) => {
 
   res.json({
     id: task.id, name: task.name, type: task.type, target: task.target,
-    os_type: task.os_type, status: task.status,
+    os_type:   task.os_type,
+    status:    task.status,
     is_active: task.is_active !== 0,
-    urls: task.urls ? JSON.parse(task.urls) : null,
-    last_result: lastCheck?.result || null,
-    last_response_ms: lastCheck?.response_ms || null,
-    last_error_raw: lastCheck?.error_raw || null,
-    last_endpoint_results: lastCheck?.endpoint_results ? JSON.parse(lastCheck.endpoint_results) : null,
-    last_checked_at: lastCheck?.checked_at || null,
-    incident_duration: incidentDuration,
-    t0: incident?.t0 || null,
-    incident: incident ? {
-      t0: incident.t0,
-      l1_sent_at: incident.l1_sent_at,
-      l2_sent_at: incident.l2_sent_at,
-      l3_sent_at: incident.l3_sent_at,
+    urls:      task.urls ? JSON.parse(task.urls) : null,
+    // Expose host mapping info on public detail (useful for debugging / display)
+    host_mapping_enabled:  task.host_mapping_enabled === 1,
+    host_mapping_hostname: task.host_mapping_hostname || '',
+    host_mapping_ip:       task.host_mapping_ip       || '',
+    last_result:           lastCheck?.result        || null,
+    last_response_ms:      lastCheck?.response_ms   || null,
+    last_error_raw:        lastCheck?.error_raw     || null,
+    last_endpoint_results: lastCheck?.endpoint_results
+                             ? JSON.parse(lastCheck.endpoint_results) : null,
+    last_checked_at:       lastCheck?.checked_at    || null,
+    incident_duration:     incidentDuration,
+    t0:        incident?.t0 || null,
+    incident:  incident ? {
+      t0:            incident.t0,
+      l1_sent_at:    incident.l1_sent_at,
+      l2_sent_at:    incident.l2_sent_at,
+      l3_sent_at:    incident.l3_sent_at,
       alerted_tiers: incident.alerted_tiers,
     } : null,
     checks: checks.map(c => ({
@@ -120,6 +145,8 @@ router.get('/public/:id', (req, res) => {
 });
 
 // POST /api/tasks/test
+// Passes the full req.body (including host_mapping_* fields) straight to the
+// monitoring agent — no DB write, no email.
 router.post('/test', requireAuth, async (req, res) => {
   try {
     const result = await testTask(req.body);
@@ -129,31 +156,30 @@ router.post('/test', requireAuth, async (req, res) => {
   }
 });
 
-// ── AUTHENTICATED ROUTES ──────────────────────────────────────────────────────
+// ── AUTHENTICATED ROUTES ───────────────────────────────────────────────────────
 
 // GET /api/tasks
 router.get('/', requireAuth, (req, res) => {
-  const tasks = db.prepare(`SELECT * FROM tasks WHERE deleted_at IS NULL ORDER BY name`).all();
+  const tasks = db.prepare('SELECT * FROM tasks WHERE deleted_at IS NULL ORDER BY name').all();
   res.json(tasks.map(enrichTask));
 });
 
 // GET /api/tasks/bin
 router.get('/bin', requireAuth, (req, res) => {
-  const tasks = db.prepare(`SELECT * FROM tasks WHERE deleted_at IS NOT NULL ORDER BY deleted_at DESC`).all();
+  const tasks = db.prepare('SELECT * FROM tasks WHERE deleted_at IS NOT NULL ORDER BY deleted_at DESC').all();
   res.json(tasks.map(enrichTask));
 });
 
 // GET /api/tasks/:id
 router.get('/:id', requireAuth, (req, res) => {
-  const task = db.prepare(`SELECT * FROM tasks WHERE id=?`).get(req.params.id);
+  const task = db.prepare('SELECT * FROM tasks WHERE id=?').get(req.params.id);
   if (!task) return res.status(404).json({ error: 'Task not found' });
 
   const checks = db.prepare(`
     SELECT * FROM checks WHERE task_id=? ORDER BY checked_at DESC LIMIT 100
   `).all(task.id);
 
-  const incident = db.prepare('SELECT * FROM incident_state WHERE task_id=?').get(task.id);
-
+  const incident  = db.prepare('SELECT * FROM incident_state WHERE task_id=?').get(task.id);
   const faultStats = db.prepare(`
     SELECT date(checked_at) as day, COUNT(*) as faults
     FROM checks
@@ -172,7 +198,24 @@ router.get('/:id', requireAuth, (req, res) => {
   });
 });
 
-// POST /api/tasks
+// ── Helper: parse host mapping fields from request body ─────────────────────────
+
+function parseHostMapping(body, type) {
+  if (type !== 'APPLICATION') {
+    return { host_mapping_enabled: 0, host_mapping_hostname: '', host_mapping_ip: '' };
+  }
+
+  const raw = body.host_mapping_enabled;
+  const enabled = (raw === true || raw === 1 || raw === '1' || raw === 'true') ? 1 : 0;
+
+  return {
+    host_mapping_enabled:  enabled,
+    host_mapping_hostname: enabled ? String(body.host_mapping_hostname || '').trim() : '',
+    host_mapping_ip:       enabled ? String(body.host_mapping_ip       || '').trim() : '',
+  };
+}
+
+// POST /api/tasks — CREATE
 router.post('/', requireAuth, validateTask, (req, res) => {
   const {
     name, type, target, urls, os_type, is_vm,
@@ -181,20 +224,31 @@ router.post('/', requireAuth, validateTask, (req, res) => {
 
   const DEFAULT_N = parseInt(process.env.DEFAULT_N_THRESHOLD || '2');
   const id = uuidv4();
+  const hm = parseHostMapping(req.body, type);
+
+  // Normalise urls — may arrive as JSON string or already-parsed array
+  let urlsJson = null;
+  if (urls) {
+    const parsed = typeof urls === 'string' ? JSON.parse(urls) : urls;
+    urlsJson = JSON.stringify(parsed);
+  }
 
   db.prepare(`
-    INSERT INTO tasks (id, name, type, target, urls, os_type, is_vm, interval_min, n_threshold,
-      email_l1, email_l2, email_l3, email_enabled, is_active)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    INSERT INTO tasks (
+      id, name, type, target, urls, os_type, is_vm,
+      interval_min, n_threshold,
+      email_l1, email_l2, email_l3, email_enabled, is_active,
+      host_mapping_enabled, host_mapping_hostname, host_mapping_ip
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `).run(
-    id, name.trim(), type, target.trim(),
-    urls ? JSON.stringify(typeof urls === 'string' ? JSON.parse(urls) : urls) : null,
+    id, name.trim(), type, target.trim(), urlsJson,
     os_type || null, is_vm ? 1 : 0,
     parseInt(interval_min),
     n_threshold ? parseInt(n_threshold) : DEFAULT_N,
     email_l1 || '', email_l2 || '', email_l3 || '',
     email_enabled === false || email_enabled === 0 ? 0 : 1,
-    is_active === false || is_active === 0 ? 0 : 1
+    is_active  === false || is_active  === 0 ? 0 : 1,
+    hm.host_mapping_enabled, hm.host_mapping_hostname, hm.host_mapping_ip
   );
 
   const created = db.prepare('SELECT * FROM tasks WHERE id=?').get(id);
@@ -203,7 +257,7 @@ router.post('/', requireAuth, validateTask, (req, res) => {
   res.status(201).json(enrichTask(created));
 });
 
-// PUT /api/tasks/:id
+// PUT /api/tasks/:id — UPDATE
 router.put('/:id', requireAuth, validateTask, (req, res) => {
   const task = db.prepare('SELECT * FROM tasks WHERE id=? AND deleted_at IS NULL').get(req.params.id);
   if (!task) return res.status(404).json({ error: 'Task not found' });
@@ -212,22 +266,33 @@ router.put('/:id', requireAuth, validateTask, (req, res) => {
     name, type, target, urls, os_type, is_vm,
     interval_min, n_threshold, email_l1, email_l2, email_l3, email_enabled, is_active,
   } = req.body;
+
   const DEFAULT_N = parseInt(process.env.DEFAULT_N_THRESHOLD || '2');
+  const hm = parseHostMapping(req.body, type);
+
+  let urlsJson = null;
+  if (urls) {
+    const parsed = typeof urls === 'string' ? JSON.parse(urls) : urls;
+    urlsJson = JSON.stringify(parsed);
+  }
 
   db.prepare(`
-    UPDATE tasks SET name=?, type=?, target=?, urls=?, os_type=?, is_vm=?,
-      interval_min=?, n_threshold=?, email_l1=?, email_l2=?, email_l3=?,
-      email_enabled=?, is_active=?, updated_at=datetime('now')
+    UPDATE tasks SET
+      name=?, type=?, target=?, urls=?, os_type=?, is_vm=?,
+      interval_min=?, n_threshold=?,
+      email_l1=?, email_l2=?, email_l3=?, email_enabled=?, is_active=?,
+      host_mapping_enabled=?, host_mapping_hostname=?, host_mapping_ip=?,
+      updated_at=datetime('now')
     WHERE id=?
   `).run(
-    name.trim(), type, target.trim(),
-    urls ? JSON.stringify(typeof urls === 'string' ? JSON.parse(urls) : urls) : null,
+    name.trim(), type, target.trim(), urlsJson,
     os_type || null, is_vm ? 1 : 0,
     parseInt(interval_min),
     n_threshold ? parseInt(n_threshold) : DEFAULT_N,
     email_l1 || '', email_l2 || '', email_l3 || '',
     email_enabled === false || email_enabled === 0 ? 0 : 1,
-    is_active === false || is_active === 0 ? 0 : 1,
+    is_active  === false || is_active  === 0 ? 0 : 1,
+    hm.host_mapping_enabled, hm.host_mapping_hostname, hm.host_mapping_ip,
     req.params.id
   );
 
@@ -237,7 +302,7 @@ router.put('/:id', requireAuth, validateTask, (req, res) => {
   res.json(enrichTask(updated));
 });
 
-// DELETE /api/tasks/:id (soft)
+// DELETE /api/tasks/:id (soft delete → Recycle Bin)
 router.delete('/:id', requireAuth, (req, res) => {
   const task = db.prepare('SELECT * FROM tasks WHERE id=? AND deleted_at IS NULL').get(req.params.id);
   if (!task) return res.status(404).json({ error: 'Task not found' });
@@ -261,7 +326,7 @@ router.post('/:id/restore', requireAuth, (req, res) => {
   res.json({ ok: true });
 });
 
-// DELETE /api/tasks/:id/hard
+// DELETE /api/tasks/:id/hard (permanent)
 router.delete('/:id/hard', requireAuth, (req, res) => {
   const task = db.prepare('SELECT * FROM tasks WHERE id=?').get(req.params.id);
   if (!task) return res.status(404).json({ error: 'Task not found' });
@@ -272,7 +337,7 @@ router.delete('/:id/hard', requireAuth, (req, res) => {
   res.json({ ok: true });
 });
 
-// POST /api/tasks/:id/run
+// POST /api/tasks/:id/run (manual run)
 router.post('/:id/run', requireAuth, async (req, res) => {
   try {
     const result = await manualRun(req.params.id, req.user.username);
@@ -308,11 +373,10 @@ router.patch('/:id/active-toggle', requireAuth, (req, res) => {
   db.prepare(`UPDATE tasks SET is_active=?, updated_at=datetime('now') WHERE id=?`)
     .run(newVal, task.id);
 
-  // If deactivating — clear any open incident and reset CFC
+  // Deactivating — clear any open incident and reset CFC
   if (newVal === 0) {
     db.prepare('DELETE FROM incident_state WHERE task_id=?').run(task.id);
-    db.prepare(`UPDATE tasks SET cfc=0, status='OK', updated_at=datetime('now') WHERE id=?`)
-      .run(task.id);
+    db.prepare(`UPDATE tasks SET cfc=0, status='OK', updated_at=datetime('now') WHERE id=?`).run(task.id);
   }
 
   log('INFO', 'ADMIN', req.user.username, task.id,
