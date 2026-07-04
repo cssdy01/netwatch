@@ -6,29 +6,27 @@
   <title>NetWatch — Admin Dashboard</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
-    body { background:#0d1117; color:#f0f6fc; }
-    .modal-bg { background:rgba(0,0,0,.8); backdrop-filter:blur(4px); }
-    pre { white-space:pre-wrap; word-break:break-all; }
-    ::-webkit-scrollbar { width:6px; } ::-webkit-scrollbar-thumb { background:#30363d; border-radius:3px; }
-    .tab-active   { border-bottom:2px solid #3b82f6; color:#f0f6fc; }
-    .tab-inactive { color:#6e7681; border-bottom:2px solid transparent; }
-    .stab-active   { background:#1f2937; color:#f0f6fc; border-radius:0.375rem; }
-    .stab-inactive { color:#6e7681; }
-    .inp { background:#0d1117; border:1px solid #374151; border-radius:0.5rem; color:#f0f6fc; padding:0.5rem 0.75rem; font-size:0.875rem; width:100%; }
-    .inp:focus { outline:none; border-color:#3b82f6; }
-    .search-inp { background:#0d1117; border:1px solid #374151; border-radius:0.5rem; color:#f0f6fc;
-                  padding:0.375rem 0.75rem; font-size:0.8rem; }
-    .search-inp:focus { outline:none; border-color:#3b82f6; }
-    .badge-ok    { background:#14532d; color:#86efac; }
-    .badge-fault { background:#450a0a; color:#fca5a5; }
-    .badge-pause { background:#1f2937; color:#6b7280; }
+    body{background:#0d1117;color:#f0f6fc;}
+    .modal-bg{background:rgba(0,0,0,.85);backdrop-filter:blur(4px);}
+    pre{white-space:pre-wrap;word-break:break-all;}
+    ::-webkit-scrollbar{width:6px;}::-webkit-scrollbar-thumb{background:#30363d;border-radius:3px;}
+    .tab-active  {border-bottom:2px solid #3b82f6;color:#f0f6fc;}
+    .tab-inactive{color:#6e7681;border-bottom:2px solid transparent;}
+    .stab-active  {background:#1f2937;color:#f0f6fc;border-radius:.375rem;}
+    .stab-inactive{color:#6e7681;}
+    .inp{background:#0d1117;border:1px solid #374151;border-radius:.5rem;color:#f0f6fc;padding:.5rem .75rem;font-size:.875rem;width:100%;}
+    .inp:focus{outline:none;border-color:#3b82f6;}
+    .si{background:#0d1117;border:1px solid #374151;border-radius:.5rem;color:#f0f6fc;padding:.375rem .75rem;font-size:.8rem;}
+    .si:focus{outline:none;border-color:#3b82f6;}
+    .badge-ok   {background:#14532d;color:#86efac;}
+    .badge-fault{background:#450a0a;color:#fca5a5;}
+    .badge-pause{background:#1f2937;color:#6b7280;}
+    .hm-box{background:#0a1628;border:1px solid #1e3a5f;border-radius:.5rem;padding:.75rem;margin-top:.5rem;}
   </style>
 </head>
 <body class="min-h-screen flex flex-col">
 
-<!-- Top bar -->
-<header class="border-b border-gray-800 px-6 py-3 flex items-center justify-between sticky top-0 z-20"
-        style="background:#161b22;">
+<header class="border-b border-gray-800 px-6 py-3 flex items-center justify-between sticky top-0 z-20" style="background:#161b22;">
   <div class="flex items-center gap-4">
     <span class="font-bold text-base">⚙ NetWatch Admin</span>
     <a href="/" class="text-xs text-gray-500 hover:text-gray-300">View Dashboard →</a>
@@ -40,11 +38,10 @@
   </div>
 </header>
 
-<!-- Main tabs -->
+<!-- Main tabs (Host Mappings tab removed) -->
 <div class="px-6 flex gap-0 border-b border-gray-800 overflow-x-auto" style="background:#161b22;">
   <button class="px-4 py-3 text-sm font-medium tab-active  whitespace-nowrap" onclick="setTab('tasks',this)">Tasks</button>
   <button class="px-4 py-3 text-sm font-medium tab-inactive whitespace-nowrap" onclick="setTab('bin',this)">Recycle Bin</button>
-  <button class="px-4 py-3 text-sm font-medium tab-inactive whitespace-nowrap" onclick="setTab('hostmaps',this)">Host Mappings</button>
   <button class="px-4 py-3 text-sm font-medium tab-inactive whitespace-nowrap" onclick="setTab('backup',this)">Backup</button>
   <button class="px-4 py-3 text-sm font-medium tab-inactive whitespace-nowrap" onclick="setTab('logs',this)">Logs</button>
   <button class="px-4 py-3 text-sm font-medium tab-inactive whitespace-nowrap" onclick="setTab('settings',this)">Settings</button>
@@ -52,132 +49,91 @@
 
 <main class="flex-1 p-6 space-y-4">
 
-<!-- ══════════════════ TASKS TAB ══════════════════ -->
+<!-- ══ TASKS ══ -->
 <div id="tab-tasks">
   <div class="flex items-center justify-between mb-4">
     <h2 class="font-semibold text-lg">Monitored Tasks</h2>
     <button onclick="openTaskModal(null)"
-      class="px-4 py-2 rounded-lg text-sm font-medium bg-blue-600 hover:bg-blue-500 transition">
-      + Add Task
-    </button>
+      class="px-4 py-2 rounded-lg text-sm font-medium bg-blue-600 hover:bg-blue-500 transition">+ Add Task</button>
   </div>
 
-  <!-- Sub-tabs: Ping / Application -->
   <div class="flex gap-1 mb-4 p-1 rounded-lg w-fit" style="background:#0d1117;">
-    <button id="stab-ping" class="stab-active  px-4 py-2 text-sm font-medium transition"
-            onclick="setTaskSubTab('ping',this)">🖥 Ping Tasks</button>
-    <button id="stab-app"  class="stab-inactive px-4 py-2 text-sm font-medium transition"
-            onclick="setTaskSubTab('app',this)">🌐 Application Tasks</button>
+    <button id="stab-ping" class="stab-active  px-4 py-2 text-sm font-medium transition" onclick="setTaskSubTab('ping',this)">🖥 Ping Tasks</button>
+    <button id="stab-app"  class="stab-inactive px-4 py-2 text-sm font-medium transition" onclick="setTaskSubTab('app',this)">🌐 Application Tasks</button>
   </div>
 
-  <!-- Ping section -->
   <div id="tasks-ping">
     <div class="flex items-center gap-3 mb-3">
-      <input id="searchPingAdmin" type="search" placeholder="Search ping tasks…"
-             class="search-inp" oninput="renderTasks()">
+      <input id="searchPingAdmin" type="search" placeholder="Search ping tasks…" class="si" oninput="renderTasks()">
       <span id="pingTaskCount" class="text-xs text-gray-600"></span>
     </div>
     <div class="rounded-xl border border-gray-700 overflow-hidden" style="background:#161b22;">
       <table class="w-full text-sm">
         <thead class="text-xs uppercase text-gray-500 border-b border-gray-700">
           <tr style="background:#0d1117;">
-            <th class="text-left px-4 py-3">Name</th>
-            <th class="text-left px-4 py-3">Target</th>
-            <th class="text-left px-4 py-3">OS</th>
-            <th class="text-left px-4 py-3">Int</th>
-            <th class="text-left px-4 py-3">N</th>
-            <th class="text-left px-4 py-3">Status</th>
-            <th class="text-left px-4 py-3">Active</th>
-            <th class="text-left px-4 py-3">Email</th>
-            <th class="text-left px-4 py-3">Last Check (IST)</th>
-            <th class="px-4 py-3">Actions</th>
+            <th class="text-left px-4 py-3">Name</th><th class="text-left px-4 py-3">Target</th>
+            <th class="text-left px-4 py-3">OS</th><th class="text-left px-4 py-3">Int</th>
+            <th class="text-left px-4 py-3">N</th><th class="text-left px-4 py-3">Status</th>
+            <th class="text-left px-4 py-3">Active</th><th class="text-left px-4 py-3">Email</th>
+            <th class="text-left px-4 py-3">Last Check (IST)</th><th class="px-4 py-3">Actions</th>
           </tr>
         </thead>
-        <tbody id="pingTasksBody">
-          <tr><td colspan="10" class="px-4 py-8 text-center text-gray-600">Loading…</td></tr>
-        </tbody>
+        <tbody id="pingTasksBody"><tr><td colspan="10" class="px-4 py-8 text-center text-gray-600">Loading…</td></tr></tbody>
       </table>
     </div>
   </div>
 
-  <!-- Application section -->
   <div id="tasks-app" class="hidden">
     <div class="flex items-center gap-3 mb-3">
-      <input id="searchAppAdmin" type="search" placeholder="Search application tasks…"
-             class="search-inp" oninput="renderTasks()">
+      <input id="searchAppAdmin" type="search" placeholder="Search application tasks…" class="si" oninput="renderTasks()">
       <span id="appTaskCount" class="text-xs text-gray-600"></span>
     </div>
     <div class="rounded-xl border border-gray-700 overflow-hidden" style="background:#161b22;">
       <table class="w-full text-sm">
         <thead class="text-xs uppercase text-gray-500 border-b border-gray-700">
           <tr style="background:#0d1117;">
-            <th class="text-left px-4 py-3">Name</th>
-            <th class="text-left px-4 py-3">Server IP</th>
-            <th class="text-left px-4 py-3">URLs</th>
-            <th class="text-left px-4 py-3">Int</th>
-            <th class="text-left px-4 py-3">N</th>
-            <th class="text-left px-4 py-3">Status</th>
-            <th class="text-left px-4 py-3">Active</th>
-            <th class="text-left px-4 py-3">Email</th>
-            <th class="text-left px-4 py-3">Last Check (IST)</th>
+            <th class="text-left px-4 py-3">Name</th><th class="text-left px-4 py-3">Server IP</th>
+            <th class="text-left px-4 py-3">URLs</th><th class="text-left px-4 py-3">Host Map</th>
+            <th class="text-left px-4 py-3">Int</th><th class="text-left px-4 py-3">N</th>
+            <th class="text-left px-4 py-3">Status</th><th class="text-left px-4 py-3">Active</th>
+            <th class="text-left px-4 py-3">Email</th><th class="text-left px-4 py-3">Last Check (IST)</th>
             <th class="px-4 py-3">Actions</th>
           </tr>
         </thead>
-        <tbody id="appTasksBody">
-          <tr><td colspan="10" class="px-4 py-8 text-center text-gray-600">Loading…</td></tr>
-        </tbody>
+        <tbody id="appTasksBody"><tr><td colspan="11" class="px-4 py-8 text-center text-gray-600">Loading…</td></tr></tbody>
       </table>
     </div>
   </div>
 </div>
 
-<!-- ══════════════════ RECYCLE BIN TAB ══════════════════ -->
+<!-- ══ RECYCLE BIN ══ -->
 <div id="tab-bin" class="hidden">
   <h2 class="font-semibold text-lg mb-4">Recycle Bin</h2>
-
   <div class="flex gap-1 mb-4 p-1 rounded-lg w-fit" style="background:#0d1117;">
-    <button id="bstab-ping" class="stab-active  px-4 py-2 text-sm font-medium transition"
-            onclick="setBinSubTab('ping',this)">🖥 Ping</button>
-    <button id="bstab-app"  class="stab-inactive px-4 py-2 text-sm font-medium transition"
-            onclick="setBinSubTab('app',this)">🌐 Application</button>
+    <button id="bstab-ping" class="stab-active  px-4 py-2 text-sm font-medium transition" onclick="setBinSubTab('ping',this)">🖥 Ping</button>
+    <button id="bstab-app"  class="stab-inactive px-4 py-2 text-sm font-medium transition" onclick="setBinSubTab('app',this)">🌐 Application</button>
   </div>
-
-  <!-- Bin Ping -->
   <div id="bin-ping">
     <div class="flex items-center gap-3 mb-3">
-      <input id="searchBinPing" type="search" placeholder="Search deleted ping tasks…"
-             class="search-inp" oninput="renderBin()">
+      <input id="searchBinPing" type="search" placeholder="Search deleted ping tasks…" class="si" oninput="renderBin()">
     </div>
     <div class="rounded-xl border border-gray-700 overflow-hidden" style="background:#161b22;">
       <table class="w-full text-sm">
         <thead class="text-xs uppercase text-gray-500 border-b border-gray-700">
-          <tr style="background:#0d1117;">
-            <th class="text-left px-4 py-3">Name</th>
-            <th class="text-left px-4 py-3">Target</th>
-            <th class="text-left px-4 py-3">Deleted At (IST)</th>
-            <th class="px-4 py-3">Actions</th>
-          </tr>
+          <tr style="background:#0d1117;"><th class="text-left px-4 py-3">Name</th><th class="text-left px-4 py-3">Target</th><th class="text-left px-4 py-3">Deleted At (IST)</th><th class="px-4 py-3">Actions</th></tr>
         </thead>
         <tbody id="binPingBody"><tr><td colspan="4" class="px-4 py-8 text-center text-gray-600">Loading…</td></tr></tbody>
       </table>
     </div>
   </div>
-
-  <!-- Bin Application -->
   <div id="bin-app" class="hidden">
     <div class="flex items-center gap-3 mb-3">
-      <input id="searchBinApp" type="search" placeholder="Search deleted application tasks…"
-             class="search-inp" oninput="renderBin()">
+      <input id="searchBinApp" type="search" placeholder="Search deleted application tasks…" class="si" oninput="renderBin()">
     </div>
     <div class="rounded-xl border border-gray-700 overflow-hidden" style="background:#161b22;">
       <table class="w-full text-sm">
         <thead class="text-xs uppercase text-gray-500 border-b border-gray-700">
-          <tr style="background:#0d1117;">
-            <th class="text-left px-4 py-3">Name</th>
-            <th class="text-left px-4 py-3">Server IP</th>
-            <th class="text-left px-4 py-3">Deleted At (IST)</th>
-            <th class="px-4 py-3">Actions</th>
-          </tr>
+          <tr style="background:#0d1117;"><th class="text-left px-4 py-3">Name</th><th class="text-left px-4 py-3">Server IP</th><th class="text-left px-4 py-3">Deleted At (IST)</th><th class="px-4 py-3">Actions</th></tr>
         </thead>
         <tbody id="binAppBody"><tr><td colspan="4" class="px-4 py-8 text-center text-gray-600">Loading…</td></tr></tbody>
       </table>
@@ -185,172 +141,71 @@
   </div>
 </div>
 
-<!-- ══════════════════ HOST MAPPINGS TAB ══════════════════ -->
-<div id="tab-hostmaps" class="hidden">
-  <div class="flex items-center justify-between mb-4">
-    <div>
-      <h2 class="font-semibold text-lg">Host Mappings</h2>
-      <p class="text-xs text-gray-500 mt-1">
-        Map private hostnames to IP addresses so Application URL monitoring can reach
-        hostname-based URLs (e.g. <code class="text-blue-400">dev.uimcn.tsaro.com</code> → <code class="text-blue-400">192.168.108.176</code>)
-        without editing <code class="text-gray-400">/etc/hosts</code> in the container.
-      </p>
-    </div>
-    <button onclick="openHostMapModal(null)"
-      class="ml-4 px-4 py-2 rounded-lg text-sm font-medium bg-blue-600 hover:bg-blue-500 transition shrink-0">
-      + Add Mapping
-    </button>
-  </div>
-  <div class="rounded-xl border border-gray-700 overflow-hidden" style="background:#161b22;">
-    <table class="w-full text-sm">
-      <thead class="text-xs uppercase text-gray-500 border-b border-gray-700">
-        <tr style="background:#0d1117;">
-          <th class="text-left px-4 py-3">Hostname</th>
-          <th class="text-left px-4 py-3">IP Address</th>
-          <th class="text-left px-4 py-3">Note</th>
-          <th class="text-left px-4 py-3">Updated (IST)</th>
-          <th class="px-4 py-3">Actions</th>
-        </tr>
-      </thead>
-      <tbody id="hostMapsBody"><tr><td colspan="5" class="px-4 py-8 text-center text-gray-600">Loading…</td></tr></tbody>
-    </table>
-  </div>
-</div>
-
-<!-- ══════════════════ BACKUP TAB ══════════════════ -->
+<!-- ══ BACKUP ══ -->
 <div id="tab-backup" class="hidden">
-  <h2 class="font-semibold text-lg mb-4">Backup & Restore</h2>
+  <h2 class="font-semibold text-lg mb-4">Backup &amp; Restore</h2>
   <div class="grid md:grid-cols-2 gap-4">
-
-    <!-- Export -->
     <div class="rounded-xl border border-gray-700 p-6" style="background:#161b22;">
       <h3 class="font-medium mb-2">📥 Export</h3>
-      <p class="text-sm text-gray-500 mb-4">
-        Download all tasks and host mappings as an Excel file (.xlsx).
-      </p>
-      <a href="#" onclick="doExport(event)"
-        class="inline-block px-4 py-2 rounded-lg text-sm font-medium bg-green-700 hover:bg-green-600 transition">
-        Download Backup (.xlsx)
-      </a>
+      <p class="text-sm text-gray-500 mb-4">Download all tasks (including host mapping fields) as Excel (.xlsx).</p>
+      <a href="#" onclick="doExport(event)" class="inline-block px-4 py-2 rounded-lg text-sm font-medium bg-green-700 hover:bg-green-600 transition">Download Backup (.xlsx)</a>
     </div>
-
-    <!-- Import -->
     <div class="rounded-xl border border-gray-700 p-6" style="background:#161b22;">
       <h3 class="font-medium mb-2">📤 Import</h3>
-      <p class="text-sm text-gray-500 mb-4">
-        Upload an .xlsx backup. You will see a preview before any changes are applied.
-      </p>
+      <p class="text-sm text-gray-500 mb-4">Upload an .xlsx backup. Preview is shown before any changes are applied.</p>
       <input type="file" id="importFile" accept=".xlsx" class="hidden" onchange="doImportPreview(this)">
-      <button onclick="document.getElementById('importFile').click()"
-        class="px-4 py-2 rounded-lg text-sm font-medium bg-blue-700 hover:bg-blue-600 transition">
-        Choose File…
-      </button>
+      <button onclick="document.getElementById('importFile').click()" class="px-4 py-2 rounded-lg text-sm font-medium bg-blue-700 hover:bg-blue-600 transition">Choose File…</button>
     </div>
   </div>
-
-  <!-- Import preview panel (shown after file chosen) -->
   <div id="importPreviewPanel" class="hidden mt-4 rounded-xl border border-gray-700 p-6" style="background:#161b22;">
     <div class="flex items-center justify-between mb-4">
       <h3 class="font-semibold">Import Preview</h3>
       <span id="importExpiry" class="text-xs text-gray-500"></span>
     </div>
-
-    <!-- Summary table -->
-    <div class="grid grid-cols-3 gap-2 mb-4 text-sm">
+    <div class="grid grid-cols-2 gap-2 mb-4 text-sm">
       <div class="rounded-lg p-3 border border-gray-700" style="background:#0d1117;">
-        <div class="text-gray-500 text-xs mb-1">Ping Tasks</div>
-        <div id="prevPing" class="text-gray-300 text-xs space-y-0.5"></div>
+        <div class="text-gray-500 text-xs mb-1">Ping Tasks</div><div id="prevPing" class="text-gray-300 text-xs space-y-0.5"></div>
       </div>
       <div class="rounded-lg p-3 border border-gray-700" style="background:#0d1117;">
-        <div class="text-gray-500 text-xs mb-1">Application Tasks</div>
-        <div id="prevApp" class="text-gray-300 text-xs space-y-0.5"></div>
-      </div>
-      <div class="rounded-lg p-3 border border-gray-700" style="background:#0d1117;">
-        <div class="text-gray-500 text-xs mb-1">Host Mappings</div>
-        <div id="prevHost" class="text-gray-300 text-xs space-y-0.5"></div>
+        <div class="text-gray-500 text-xs mb-1">Application Tasks</div><div id="prevApp" class="text-gray-300 text-xs space-y-0.5"></div>
       </div>
     </div>
-
-    <!-- Validation errors -->
-    <div id="importErrors" class="hidden mb-4 p-3 rounded-lg border border-red-800 text-xs text-red-300"
-         style="background:#1c0f0f;"></div>
-
-    <!-- Action buttons -->
+    <div id="importErrors" class="hidden mb-4 p-3 rounded-lg border border-red-800 text-xs text-red-300" style="background:#1c0f0f;"></div>
     <div class="flex flex-wrap gap-2 mb-3">
-      <button onclick="doImportApply('insert_and_update')"
-        class="px-4 py-2 rounded-lg text-sm font-medium bg-blue-600 hover:bg-blue-500 transition">
-        ✔ Insert + Update All
-      </button>
-      <button onclick="doImportApply('insert_only')"
-        class="px-4 py-2 rounded-lg text-sm font-medium bg-green-700 hover:bg-green-600 transition">
-        + Insert New Only
-      </button>
-      <button onclick="doImportApply('update_only')"
-        class="px-4 py-2 rounded-lg text-sm font-medium bg-yellow-700 hover:bg-yellow-600 transition">
-        ↻ Update Existing Only
-      </button>
-      <button onclick="doImportApply('cancel')"
-        class="px-4 py-2 rounded-lg text-sm font-medium border border-gray-600 hover:border-gray-400 transition">
-        ✕ Cancel
-      </button>
+      <button onclick="doImportApply('insert_and_update')" class="px-4 py-2 rounded-lg text-sm font-medium bg-blue-600 hover:bg-blue-500 transition">✔ Insert + Update All</button>
+      <button onclick="doImportApply('insert_only')"       class="px-4 py-2 rounded-lg text-sm font-medium bg-green-700 hover:bg-green-600 transition">+ Insert New Only</button>
+      <button onclick="doImportApply('update_only')"       class="px-4 py-2 rounded-lg text-sm font-medium bg-yellow-700 hover:bg-yellow-600 transition">↻ Update Existing Only</button>
+      <button onclick="doImportApply('cancel')"            class="px-4 py-2 rounded-lg text-sm font-medium border border-gray-600 hover:border-gray-400 transition">✕ Cancel</button>
     </div>
-
     <div id="importResult" class="text-sm"></div>
   </div>
 </div>
 
-<!-- ══════════════════ LOGS TAB ══════════════════ -->
+<!-- ══ LOGS ══ -->
 <div id="tab-logs" class="hidden">
   <div class="flex items-center justify-between mb-4">
     <h2 class="font-semibold text-lg">Logs</h2>
-    <!-- Download bar -->
     <div class="flex flex-wrap gap-2">
-      <select id="dlRange" class="inp" style="width:auto;padding:.375rem .75rem;font-size:.8rem;">
-        <option value="today">Today</option>
-        <option value="7d">Last 7 Days</option>
-        <option value="15d">Last 15 Days</option>
-      </select>
-      <select id="dlCategory" class="inp" style="width:auto;padding:.375rem .75rem;font-size:.8rem;">
-        <option value="ALL">All Logs</option>
-        <option value="TASK_LOGS">Task Logs</option>
-        <option value="ADMIN_LOGS">Admin Activity Logs</option>
-        <option value="AUTH_LOGS">Audit / Auth Logs</option>
-      </select>
-      <button onclick="downloadLogs('json')"
-        class="px-3 py-1.5 text-xs rounded-lg bg-green-800 hover:bg-green-700 transition">↓ JSON</button>
-      <button onclick="downloadLogs('csv')"
-        class="px-3 py-1.5 text-xs rounded-lg bg-green-800 hover:bg-green-700 transition">↓ CSV</button>
+      <select id="dlRange"    class="inp" style="width:auto;padding:.375rem .75rem;font-size:.8rem;"><option value="today">Today</option><option value="7d">Last 7 Days</option><option value="15d">Last 15 Days</option></select>
+      <select id="dlCategory" class="inp" style="width:auto;padding:.375rem .75rem;font-size:.8rem;"><option value="ALL">All Logs</option><option value="TASK_LOGS">Task Logs</option><option value="ADMIN_LOGS">Admin Activity</option><option value="AUTH_LOGS">Audit / Auth</option></select>
+      <button onclick="downloadLogs('json')" class="px-3 py-1.5 text-xs rounded-lg bg-green-800 hover:bg-green-700 transition">↓ JSON</button>
+      <button onclick="downloadLogs('csv')"  class="px-3 py-1.5 text-xs rounded-lg bg-green-800 hover:bg-green-700 transition">↓ CSV</button>
     </div>
   </div>
-
-  <!-- Log sub-tabs -->
   <div class="flex gap-1 mb-4 p-1 rounded-lg w-fit" style="background:#0d1117;">
     <button id="lstab-task"  class="stab-active   px-3 py-2 text-sm font-medium transition" onclick="setLogTab('task',this)">Task Logs</button>
     <button id="lstab-admin" class="stab-inactive  px-3 py-2 text-sm font-medium transition" onclick="setLogTab('admin',this)">Admin Activity</button>
     <button id="lstab-audit" class="stab-inactive  px-3 py-2 text-sm font-medium transition" onclick="setLogTab('audit',this)">Audit / Auth</button>
   </div>
-
-  <!-- Task Logs -->
   <div id="logsSection-task">
     <div class="flex flex-wrap gap-2 mb-3">
-      <select id="taskLogLevel" class="inp" style="width:auto;padding:.375rem .75rem;font-size:.8rem;">
-        <option value="">All Levels</option>
-        <option>INFO</option><option>WARN</option><option>ERROR</option>
-      </select>
-      <input id="taskLogSearch" placeholder="Task name…" class="search-inp">
+      <select id="taskLogLevel" class="inp" style="width:auto;padding:.375rem .75rem;font-size:.8rem;"><option value="">All Levels</option><option>INFO</option><option>WARN</option><option>ERROR</option></select>
+      <input id="taskLogSearch" placeholder="Task name…" class="si">
       <button onclick="loadTaskLogs()" class="px-3 py-1.5 text-xs rounded-lg bg-gray-700 hover:bg-gray-600 transition">Apply</button>
     </div>
     <div class="rounded-xl border border-gray-700 overflow-hidden" style="background:#161b22;">
       <table class="w-full text-xs">
-        <thead class="text-gray-500 uppercase border-b border-gray-700">
-          <tr style="background:#0d1117;">
-            <th class="text-left px-3 py-3 w-48">Time (IST)</th>
-            <th class="text-left px-3 py-3 w-16">Level</th>
-            <th class="text-left px-3 py-3 w-28">Category</th>
-            <th class="text-left px-3 py-3 w-28">Task</th>
-            <th class="text-left px-3 py-3">Message</th>
-          </tr>
-        </thead>
+        <thead class="text-gray-500 uppercase border-b border-gray-700"><tr style="background:#0d1117;"><th class="text-left px-3 py-3 w-48">Time (IST)</th><th class="text-left px-3 py-3 w-16">Level</th><th class="text-left px-3 py-3 w-28">Category</th><th class="text-left px-3 py-3 w-28">Task</th><th class="text-left px-3 py-3">Message</th></tr></thead>
         <tbody id="taskLogsBody"><tr><td colspan="5" class="px-4 py-6 text-center text-gray-600">Click Apply to load</td></tr></tbody>
       </table>
     </div>
@@ -360,26 +215,14 @@
       <button onclick="changeTaskLogPage(1)"  class="px-3 py-1 text-xs rounded bg-gray-700 hover:bg-gray-600">Next →</button>
     </div>
   </div>
-
-  <!-- Admin Activity Logs -->
   <div id="logsSection-admin" class="hidden">
     <div class="flex flex-wrap gap-2 mb-3">
-      <select id="adminLogLevel" class="inp" style="width:auto;padding:.375rem .75rem;font-size:.8rem;">
-        <option value="">All Levels</option>
-        <option>INFO</option><option>WARN</option><option>ERROR</option>
-      </select>
+      <select id="adminLogLevel" class="inp" style="width:auto;padding:.375rem .75rem;font-size:.8rem;"><option value="">All Levels</option><option>INFO</option><option>WARN</option><option>ERROR</option></select>
       <button onclick="loadAdminLogs()" class="px-3 py-1.5 text-xs rounded-lg bg-gray-700 hover:bg-gray-600 transition">Apply</button>
     </div>
     <div class="rounded-xl border border-gray-700 overflow-hidden" style="background:#161b22;">
       <table class="w-full text-xs">
-        <thead class="text-gray-500 uppercase border-b border-gray-700">
-          <tr style="background:#0d1117;">
-            <th class="text-left px-3 py-3 w-48">Time (IST)</th>
-            <th class="text-left px-3 py-3 w-16">Level</th>
-            <th class="text-left px-3 py-3 w-24">Actor</th>
-            <th class="text-left px-3 py-3">Message</th>
-          </tr>
-        </thead>
+        <thead class="text-gray-500 uppercase border-b border-gray-700"><tr style="background:#0d1117;"><th class="text-left px-3 py-3 w-48">Time (IST)</th><th class="text-left px-3 py-3 w-16">Level</th><th class="text-left px-3 py-3 w-24">Actor</th><th class="text-left px-3 py-3">Message</th></tr></thead>
         <tbody id="adminLogsBody"><tr><td colspan="4" class="px-4 py-6 text-center text-gray-600">Click Apply to load</td></tr></tbody>
       </table>
     </div>
@@ -389,22 +232,13 @@
       <button onclick="changeAdminLogPage(1)"  class="px-3 py-1 text-xs rounded bg-gray-700 hover:bg-gray-600">Next →</button>
     </div>
   </div>
-
-  <!-- Audit / Auth Logs -->
   <div id="logsSection-audit" class="hidden">
     <div class="flex flex-wrap gap-2 mb-3">
       <button onclick="loadAuditLogs()" class="px-3 py-1.5 text-xs rounded-lg bg-gray-700 hover:bg-gray-600 transition">Refresh</button>
     </div>
     <div class="rounded-xl border border-gray-700 overflow-hidden" style="background:#161b22;">
       <table class="w-full text-xs">
-        <thead class="text-gray-500 uppercase border-b border-gray-700">
-          <tr style="background:#0d1117;">
-            <th class="text-left px-3 py-3 w-48">Time (IST)</th>
-            <th class="text-left px-3 py-3 w-24">Actor</th>
-            <th class="text-left px-3 py-3 w-36">Action</th>
-            <th class="text-left px-3 py-3">Detail</th>
-          </tr>
-        </thead>
+        <thead class="text-gray-500 uppercase border-b border-gray-700"><tr style="background:#0d1117;"><th class="text-left px-3 py-3 w-48">Time (IST)</th><th class="text-left px-3 py-3 w-24">Actor</th><th class="text-left px-3 py-3 w-36">Action</th><th class="text-left px-3 py-3">Detail</th></tr></thead>
         <tbody id="auditLogsBody"><tr><td colspan="4" class="px-4 py-6 text-center text-gray-600">Click Refresh to load</td></tr></tbody>
       </table>
     </div>
@@ -414,8 +248,6 @@
       <button onclick="changeAuditLogPage(1)"  class="px-3 py-1 text-xs rounded bg-gray-700 hover:bg-gray-600">Next →</button>
     </div>
   </div>
-
-  <!-- Log Archives -->
   <div class="mt-6">
     <div class="flex items-center justify-between mb-2">
       <span class="text-sm font-medium text-gray-400">Log Archives (end-of-day files)</span>
@@ -425,47 +257,38 @@
   </div>
 </div>
 
-<!-- ══════════════════ SETTINGS TAB ══════════════════ -->
+<!-- ══ SETTINGS ══ -->
 <div id="tab-settings" class="hidden">
-  <h2 class="font-semibold text-lg mb-4">Settings & Health</h2>
+  <h2 class="font-semibold text-lg mb-4">Settings &amp; Health</h2>
   <div class="grid md:grid-cols-2 gap-4">
-
-    <!-- Mail test -->
     <div class="rounded-xl border border-gray-700 p-5" style="background:#161b22;">
       <h3 class="font-medium mb-1">📧 Mail Test</h3>
-      <p class="text-xs text-gray-500 mb-3">
-        Sends via system <code class="text-blue-400">mail</code> binary → container Postfix → relay.
-        No external SMTP config needed.
-      </p>
+      <p class="text-xs text-gray-500 mb-3">Sends via system <code class="text-blue-400">mail</code> → Postfix → relay. No external SMTP needed.</p>
       <div class="flex gap-2">
         <input id="testEmailAddr" type="email" placeholder="you@company.com" class="inp flex-1">
-        <button onclick="sendTestMail()"
-          class="px-4 py-2 rounded-lg text-sm bg-blue-700 hover:bg-blue-600 transition">Send</button>
+        <button onclick="sendTestMail()" class="px-4 py-2 rounded-lg text-sm bg-blue-700 hover:bg-blue-600 transition">Send</button>
       </div>
       <div id="testMailResult" class="mt-2 text-sm"></div>
     </div>
-
-    <!-- System health -->
     <div class="rounded-xl border border-gray-700 p-5" style="background:#161b22;">
       <h3 class="font-medium mb-3">🔌 System Health</h3>
       <div id="healthInfo" class="text-sm text-gray-400 space-y-1">Loading…</div>
       <button onclick="loadHealth()" class="mt-3 text-xs text-blue-400 hover:text-blue-300">↺ Refresh</button>
     </div>
   </div>
-  <!-- NOTE: Audit Logs have been moved to the Logs tab → Audit / Auth section -->
   <div class="mt-4 p-4 rounded-xl border border-gray-800 text-xs text-gray-600" style="background:#0d1117;">
-    ℹ Audit / Auth logs are now available under the <button onclick="setTab('logs', document.querySelector('[onclick*=logs]'))" class="text-blue-400 hover:text-blue-300">Logs tab → Audit / Auth</button>.
+    ℹ Audit / Auth logs are available under the <button onclick="setTab('logs',document.querySelectorAll('[onclick*=setTab]')[3])" class="text-blue-400 hover:text-blue-300">Logs tab → Audit / Auth</button>.
   </div>
 </div>
 
 </main>
 
-<!-- ══════════════════ TASK MODAL ══════════════════ -->
+<!-- ══ TASK MODAL ══ -->
 <div id="taskModal" class="fixed inset-0 z-50 hidden modal-bg flex items-center justify-center p-4">
   <div class="w-full max-w-xl rounded-xl border border-gray-700 flex flex-col max-h-[92vh]" style="background:#161b22;">
     <div class="flex items-center justify-between px-6 py-4 border-b border-gray-700">
       <h3 id="tmTitle" class="font-semibold">Add Task</h3>
-      <button onclick="closeTaskModal()" class="text-gray-500 hover:text-white">✕</button>
+      <button onclick="closeTaskModal()" class="text-gray-500 hover:text-white text-lg">✕</button>
     </div>
     <div class="overflow-y-auto flex-1 p-6">
       <div id="formErr" class="hidden mb-4 px-3 py-2 rounded-lg text-sm bg-red-950 text-red-300 border border-red-800"></div>
@@ -490,10 +313,10 @@
         <!-- Target -->
         <div>
           <label class="block text-xs text-gray-500 mb-1" id="targetLabel">Target IP / Hostname *</label>
-          <input id="fTarget" required class="inp">
+          <input id="fTarget" required class="inp" placeholder="e.g. 192.168.108.176">
         </div>
 
-        <!-- PING-only: OS Type (no is_vm) -->
+        <!-- PING-only fields -->
         <div id="pingFields">
           <label class="block text-xs text-gray-500 mb-1">OS Type</label>
           <select id="fOsType" class="inp" style="max-width:200px;">
@@ -501,17 +324,52 @@
           </select>
         </div>
 
-        <!-- APPLICATION-only: URL list -->
+        <!-- APPLICATION-only: URL rows -->
         <div id="urlFields" class="hidden">
-          <label class="block text-xs text-gray-500 mb-2">URLs to Monitor *</label>
-          <p class="text-xs text-gray-600 mb-2">
-            Use direct IP URLs (e.g. <code class="text-blue-400">http://192.168.1.10:8080/</code>) or hostname-based URLs
-            (e.g. <code class="text-blue-400">http://dev.uimcn.tsaro.com:31500/Inventory/</code>).
-            For hostname URLs, add a Host Mapping in the <b>Host Mappings</b> tab.
-          </p>
+          <label class="block text-xs text-gray-500 mb-1">URLs to Monitor *</label>
           <div id="urlList" class="space-y-2"></div>
           <button type="button" onclick="addUrlRow()"
             class="mt-2 text-xs text-blue-400 hover:text-blue-300">+ Add URL</button>
+        </div>
+
+        <!-- APPLICATION-only: Host Mapping -->
+        <div id="hostMappingSection" class="hidden">
+          <div class="rounded-lg border border-gray-700 p-4" style="background:#0d1117;">
+            <label class="flex items-center gap-3 cursor-pointer select-none mb-1">
+              <input id="fHmEnabled" type="checkbox" class="w-4 h-4 accent-blue-500" onchange="onHmToggle()">
+              <div>
+                <span class="text-sm font-medium">🔗 Enable Hostname Mapping</span>
+                <p class="text-xs text-gray-500 mt-0.5">
+                  Use this when your URL contains a hostname (e.g.
+                  <code class="text-blue-400">dev.uimcn.tsaro.com</code>) that must resolve to a
+                  specific private IP instead of public DNS.
+                  The monitor connects to the mapped IP but sends the original hostname in the HTTP Host header.
+                </p>
+              </div>
+            </label>
+
+            <div id="hmFields" class="hidden mt-3 space-y-3">
+              <div class="grid grid-cols-2 gap-3">
+                <div>
+                  <label class="block text-xs text-gray-500 mb-1">Hostname *</label>
+                  <input id="fHmHostname" placeholder="dev.uimcn.tsaro.com" class="inp">
+                  <p class="text-xs text-gray-600 mt-0.5">Must match the hostname in your URL(s)</p>
+                </div>
+                <div>
+                  <label class="block text-xs text-gray-500 mb-1">IP Address *</label>
+                  <input id="fHmIp" placeholder="192.168.108.176" class="inp">
+                  <p class="text-xs text-gray-600 mt-0.5">Server IP to connect to</p>
+                </div>
+              </div>
+              <div class="hm-box text-xs text-blue-300 space-y-1">
+                <div>📡 How it works:</div>
+                <div>① Monitor parses the URL and finds <b id="hmPreviewHostname" class="text-blue-200">the hostname</b></div>
+                <div>② TCP connection goes to <b id="hmPreviewIp" class="text-green-300">the IP address</b></div>
+                <div>③ HTTP Host header keeps the original hostname</div>
+                <div>④ Your server responds as if accessed by the hostname</div>
+              </div>
+            </div>
+          </div>
         </div>
 
         <!-- Interval + N Threshold -->
@@ -519,12 +377,10 @@
           <div>
             <label class="block text-xs text-gray-500 mb-1">Check Interval (min, 3–15) *</label>
             <input id="fInterval" type="number" min="3" max="15" value="5" required class="inp">
-            <p class="text-xs text-gray-600 mt-0.5">Min 3 minutes, max 15 minutes</p>
           </div>
           <div>
-            <label class="block text-xs text-gray-500 mb-1">N Threshold (failures → FAULT, 1–5)</label>
+            <label class="block text-xs text-gray-500 mb-1">N Threshold (1–5)</label>
             <input id="fN" type="number" min="1" max="5" value="2" class="inp">
-            <p class="text-xs text-gray-600 mt-0.5">Min 1, max 5 consecutive failures</p>
           </div>
         </div>
 
@@ -539,16 +395,16 @@
           </div>
           <div id="emailFields" class="space-y-3">
             <div>
-              <label class="block text-xs text-gray-500 mb-1">L1 — Immediate (at FAULT, up to 3 addresses)</label>
-              <input id="fL1" placeholder="email1@example.com, email2@example.com" class="inp">
+              <label class="block text-xs text-gray-500 mb-1">L1 — Immediate alert</label>
+              <input id="fL1" placeholder="email1@co.com, email2@co.com" class="inp">
             </div>
             <div>
-              <label class="block text-xs text-gray-500 mb-1">L2 — Escalation (after 48h, optional)</label>
-              <input id="fL2" placeholder="manager@example.com" class="inp">
+              <label class="block text-xs text-gray-500 mb-1">L2 — After 48h</label>
+              <input id="fL2" placeholder="manager@co.com" class="inp">
             </div>
             <div>
-              <label class="block text-xs text-gray-500 mb-1">L3 — Critical (repeat every 48h after L2, optional)</label>
-              <input id="fL3" placeholder="director@example.com" class="inp">
+              <label class="block text-xs text-gray-500 mb-1">L3 — Repeat every 48h after L2</label>
+              <input id="fL3" placeholder="director@co.com" class="inp">
             </div>
           </div>
         </div>
@@ -569,7 +425,7 @@
   </div>
 </div>
 
-<!-- ══════════════════ TASK DETAIL MODAL ══════════════════ -->
+<!-- ══ TASK DETAIL MODAL ══ -->
 <div id="detailModal" class="fixed inset-0 z-50 hidden modal-bg flex items-center justify-center p-4">
   <div class="w-full max-w-2xl rounded-xl border border-gray-700 flex flex-col max-h-[92vh]" style="background:#161b22;">
     <div class="flex items-center justify-between px-6 py-4 border-b border-gray-700">
@@ -580,849 +436,470 @@
   </div>
 </div>
 
-<!-- ══════════════════ HOST MAPPING MODAL ══════════════════ -->
-<div id="hostMapModal" class="fixed inset-0 z-50 hidden modal-bg flex items-center justify-center p-4">
-  <div class="w-full max-w-md rounded-xl border border-gray-700 flex flex-col" style="background:#161b22;">
-    <div class="flex items-center justify-between px-6 py-4 border-b border-gray-700">
-      <h3 id="hmTitle" class="font-semibold">Add Host Mapping</h3>
-      <button onclick="closeHostMapModal()" class="text-gray-500 hover:text-white">✕</button>
-    </div>
-    <div class="p-6 space-y-4">
-      <input type="hidden" id="hmId">
-      <div id="hmErr" class="hidden px-3 py-2 rounded-lg text-sm bg-red-950 text-red-300 border border-red-800"></div>
-      <div>
-        <label class="block text-xs text-gray-500 mb-1">Hostname *</label>
-        <input id="hmHostname" placeholder="dev.uimcn.tsaro.com" class="inp">
-        <p class="text-xs text-gray-600 mt-1">The domain name used in your application URL</p>
-      </div>
-      <div>
-        <label class="block text-xs text-gray-500 mb-1">IP Address *</label>
-        <input id="hmIp" placeholder="192.168.108.176" class="inp">
-        <p class="text-xs text-gray-600 mt-1">The actual server IP to connect to</p>
-      </div>
-      <div>
-        <label class="block text-xs text-gray-500 mb-1">Note (optional)</label>
-        <input id="hmNote" placeholder="Production inventory server" class="inp">
-      </div>
-      <div class="flex gap-2 pt-2">
-        <button onclick="closeHostMapModal()"
-          class="px-4 py-2 rounded-lg text-sm border border-gray-600 hover:border-gray-400 transition">Cancel</button>
-        <button onclick="saveHostMapping()"
-          class="flex-1 px-4 py-2 rounded-lg text-sm font-medium bg-blue-600 hover:bg-blue-500 transition">Save</button>
-      </div>
-    </div>
-  </div>
-</div>
-
 <script src="/config.js"></script>
 <script src="/js/api.js"></script>
 <script>
-
-// ── IST clock ──────────────────────────────────────────────────────────────
+// ── IST clock ──────────────────────────────────────────────────────────────────
 function toIST(utcVal) {
   if (!utcVal) return '—';
   return new Date(utcVal).toLocaleString('en-IN', {
-    timeZone: 'Asia/Kolkata',
-    day: '2-digit', month: '2-digit', year: 'numeric',
-    hour: '2-digit', minute: '2-digit', second: '2-digit',
-    hour12: false,
-  }).replace(/\//g, '-') + ' IST';
+    timeZone:'Asia/Kolkata', day:'2-digit', month:'2-digit', year:'numeric',
+    hour:'2-digit', minute:'2-digit', second:'2-digit', hour12:false,
+  }).replace(/\//g,'-') + ' IST';
 }
 setInterval(() => {
   document.getElementById('istClockAdmin').textContent = toIST(new Date().toISOString());
 }, 1000);
 
-// ── Auth guard ──────────────────────────────────────────────────────────────
-API.me().then(u => {
-  document.getElementById('userLabel').textContent = '👤 ' + u.username;
-}).catch(() => { window.location = '/admin/login.html'; });
+// ── Auth guard ─────────────────────────────────────────────────────────────────
+API.me().then(u => { document.getElementById('userLabel').textContent = '👤 ' + u.username; })
+        .catch(() => { window.location = '/admin/login.html'; });
+async function doLogout() { await API.logout().catch(()=>{}); window.location='/admin/login.html'; }
 
-async function doLogout() {
-  await API.logout().catch(() => {});
-  window.location = '/admin/login.html';
+// ── Utilities ──────────────────────────────────────────────────────────────────
+function escHtml(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function escAttr(s){ return String(s||'').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
+function relTime(iso){
+  if(!iso) return '—';
+  const d=Math.round((Date.now()-new Date(iso))/60000);
+  if(d<1) return 'just now'; if(d<60) return d+'m ago';
+  return Math.floor(d/60)+'h '+d%60+'m ago';
 }
 
-// ── Tab system ──────────────────────────────────────────────────────────────
-const TABS = ['tasks','bin','hostmaps','backup','logs','settings'];
-function setTab(name, btn) {
-  TABS.forEach(t => document.getElementById('tab-' + t).classList.toggle('hidden', t !== name));
-  document.querySelectorAll('[onclick^="setTab"]').forEach(b => {
-    b.className = b.className.replace('tab-active','tab-inactive');
+// ── Tab system ─────────────────────────────────────────────────────────────────
+const TABS=['tasks','bin','backup','logs','settings'];
+function setTab(name,btn){
+  TABS.forEach(t=>document.getElementById('tab-'+t).classList.toggle('hidden',t!==name));
+  document.querySelectorAll('[onclick^="setTab"]').forEach(b=>{
+    b.className=b.className.replace('tab-active','tab-inactive');
   });
-  if (btn) btn.className = btn.className.replace('tab-inactive','tab-active');
-  if (name === 'bin')      loadBin();
-  if (name === 'hostmaps') loadHostMappings();
-  if (name === 'logs')     { loadTaskLogs(); loadArchives(); }
-  if (name === 'settings') loadHealth();
+  if(btn) btn.className=btn.className.replace('tab-inactive','tab-active');
+  if(name==='bin')     loadBin();
+  if(name==='logs')    { loadTaskLogs(); loadArchives(); }
+  if(name==='settings') loadHealth();
 }
 
-// ── Task sub-tabs ───────────────────────────────────────────────────────────
-let taskSubTab = 'ping';
-function setTaskSubTab(name, btn) {
-  taskSubTab = name;
-  document.getElementById('tasks-ping').classList.toggle('hidden', name !== 'ping');
-  document.getElementById('tasks-app').classList.toggle('hidden',  name !== 'app');
-  document.querySelectorAll('[id^="stab-"]').forEach(b => {
-    b.className = b.className.replace('stab-active','stab-inactive');
-  });
-  btn.className = btn.className.replace('stab-inactive','stab-active');
+function setTaskSubTab(name,btn){
+  document.getElementById('tasks-ping').classList.toggle('hidden',name!=='ping');
+  document.getElementById('tasks-app').classList.toggle('hidden', name!=='app');
+  document.querySelectorAll('[id^="stab-"]').forEach(b=>b.className=b.className.replace('stab-active','stab-inactive'));
+  btn.className=btn.className.replace('stab-inactive','stab-active');
+}
+function setBinSubTab(name,btn){
+  document.getElementById('bin-ping').classList.toggle('hidden',name!=='ping');
+  document.getElementById('bin-app').classList.toggle('hidden', name!=='app');
+  document.querySelectorAll('[id^="bstab-"]').forEach(b=>b.className=b.className.replace('stab-active','stab-inactive'));
+  btn.className=btn.className.replace('stab-inactive','stab-active');
+}
+function setLogTab(name,btn){
+  ['task','admin','audit'].forEach(s=>document.getElementById('logsSection-'+s).classList.toggle('hidden',s!==name));
+  document.querySelectorAll('[id^="lstab-"]').forEach(b=>b.className=b.className.replace('stab-active','stab-inactive'));
+  btn.className=btn.className.replace('stab-inactive','stab-active');
+  if(name==='task')  loadTaskLogs();
+  if(name==='admin') loadAdminLogs();
+  if(name==='audit') loadAuditLogs();
 }
 
-// ── Bin sub-tabs ─────────────────────────────────────────────────────────────
-let binSubTab = 'ping';
-function setBinSubTab(name, btn) {
-  binSubTab = name;
-  document.getElementById('bin-ping').classList.toggle('hidden', name !== 'ping');
-  document.getElementById('bin-app').classList.toggle('hidden',  name !== 'app');
-  document.querySelectorAll('[id^="bstab-"]').forEach(b => {
-    b.className = b.className.replace('stab-active','stab-inactive');
-  });
-  btn.className = btn.className.replace('stab-inactive','stab-active');
+// ── Tasks ──────────────────────────────────────────────────────────────────────
+let allTasks=[];
+
+async function loadTasks(){
+  try{ allTasks=await API.tasks(); renderTasks(); }
+  catch(e){ if(e.status===401) window.location='/admin/login.html'; }
 }
 
-// ── Log sub-tabs ─────────────────────────────────────────────────────────────
-function setLogTab(name, btn) {
-  ['task','admin','audit'].forEach(s => {
-    document.getElementById('logsSection-' + s).classList.toggle('hidden', s !== name);
-  });
-  document.querySelectorAll('[id^="lstab-"]').forEach(b => {
-    b.className = b.className.replace('stab-active','stab-inactive');
-  });
-  btn.className = btn.className.replace('stab-inactive','stab-active');
-  if (name === 'task')  loadTaskLogs();
-  if (name === 'admin') loadAdminLogs();
-  if (name === 'audit') loadAuditLogs();
+function renderTasks(){
+  const ps=(document.getElementById('searchPingAdmin')?.value||'').toLowerCase();
+  const as=(document.getElementById('searchAppAdmin')?.value||'').toLowerCase();
+
+  const ping=allTasks.filter(t=>t.type==='PING' && (!ps||t.name.toLowerCase().includes(ps)||t.target.toLowerCase().includes(ps)));
+  const app =allTasks.filter(t=>t.type==='APPLICATION' && (!as||t.name.toLowerCase().includes(as)||t.target.toLowerCase().includes(as)));
+
+  const pc=document.getElementById('pingTaskCount'); if(pc) pc.textContent=ping.length+' task'+(ping.length!==1?'s':'');
+  const ac=document.getElementById('appTaskCount');  if(ac) ac.textContent=app.length+' task'+(app.length!==1?'s':'');
+
+  document.getElementById('pingTasksBody').innerHTML=ping.length
+    ? ping.map(t=>taskRow(t,'ping')).join('')
+    : `<tr><td colspan="10" class="px-4 py-8 text-center text-gray-600">${ps?'No matching ping tasks.':'No ping tasks yet.'}</td></tr>`;
+
+  document.getElementById('appTasksBody').innerHTML=app.length
+    ? app.map(t=>taskRow(t,'app')).join('')
+    : `<tr><td colspan="11" class="px-4 py-8 text-center text-gray-600">${as?'No matching application tasks.':'No application tasks yet.'}</td></tr>`;
 }
 
-// ── Utilities ───────────────────────────────────────────────────────────────
-function escHtml(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
-function escAttr(s) { return String(s||'').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
-function relTime(iso) {
-  if (!iso) return '—';
-  const d = Math.round((Date.now() - new Date(iso)) / 60000);
-  if (d < 1)  return 'just now';
-  if (d < 60) return `${d}m ago`;
-  return `${Math.floor(d/60)}h ${d%60}m ago`;
-}
+function taskRow(t,mode){
+  const inactive=!t.is_active;
+  const dim=inactive?'opacity-60':'';
+  const sb=inactive
+    ?'<span class="px-1.5 py-0.5 rounded text-xs badge-pause font-bold">—</span>'
+    :t.status==='OK'
+      ?'<span class="px-1.5 py-0.5 rounded text-xs badge-ok font-bold">OK</span>'
+      :'<span class="px-1.5 py-0.5 rounded text-xs badge-fault font-bold">FAULT</span>';
 
-// ── Tasks ────────────────────────────────────────────────────────────────────
-let allTasks = [];
+  const urlCount=mode==='app'&&t.urls
+    ?(()=>{try{return JSON.parse(t.urls).length;}catch{return'?';}})():'';
 
-async function loadTasks() {
-  try {
-    allTasks = await API.tasks();
-    renderTasks();
-  } catch (e) {
-    if (e.status === 401) window.location = '/admin/login.html';
-  }
-}
+  // Show host mapping indicator for Application tasks
+  const hmBadge=mode==='app'&&t.host_mapping_enabled
+    ?`<span class="px-1 py-0.5 rounded text-xs" style="background:#0a1628;color:#60a5fa;" title="${escAttr(t.host_mapping_hostname)}→${escAttr(t.host_mapping_ip)}">🔗 mapped</span>`
+    :(mode==='app'?'<span class="text-gray-700 text-xs">—</span>':'');
 
-function renderTasks() {
-  const pingSearch = (document.getElementById('searchPingAdmin')?.value || '').toLowerCase();
-  const appSearch  = (document.getElementById('searchAppAdmin')?.value  || '').toLowerCase();
+  const pingCols=`<td class="px-4 py-2 font-mono text-xs text-blue-400">${escHtml(t.target)}</td>
+    <td class="px-4 py-2 text-gray-400 text-xs">${escHtml(t.os_type||'Linux')}</td>`;
+  const appCols=`<td class="px-4 py-2 font-mono text-xs text-blue-400">${escHtml(t.target)}</td>
+    <td class="px-4 py-2 text-gray-500 text-xs">${urlCount} URL${urlCount!==1?'s':''}</td>
+    <td class="px-4 py-2">${hmBadge}</td>`;
 
-  const pingTasks = allTasks.filter(t => t.type === 'PING' &&
-    (!pingSearch || t.name.toLowerCase().includes(pingSearch) || t.target.toLowerCase().includes(pingSearch)));
-  const appTasks  = allTasks.filter(t => t.type === 'APPLICATION' &&
-    (!appSearch  || t.name.toLowerCase().includes(appSearch)  || t.target.toLowerCase().includes(appSearch)));
+  const colspan=mode==='ping'?10:11;
 
-  const pc = document.getElementById('pingTaskCount');
-  if (pc) pc.textContent = `${pingTasks.length} task${pingTasks.length !== 1 ? 's' : ''}`;
-  const ac = document.getElementById('appTaskCount');
-  if (ac) ac.textContent = `${appTasks.length} task${appTasks.length !== 1 ? 's' : ''}`;
-
-  document.getElementById('pingTasksBody').innerHTML = pingTasks.length
-    ? pingTasks.map(t => taskRow(t, 'ping')).join('')
-    : `<tr><td colspan="10" class="px-4 py-8 text-center text-gray-600">${pingSearch ? 'No matching ping tasks.' : 'No ping tasks yet.'}</td></tr>`;
-
-  document.getElementById('appTasksBody').innerHTML = appTasks.length
-    ? appTasks.map(t => taskRow(t, 'app')).join('')
-    : `<tr><td colspan="10" class="px-4 py-8 text-center text-gray-600">${appSearch ? 'No matching application tasks.' : 'No application tasks yet.'}</td></tr>`;
-}
-
-function taskRow(t, mode) {
-  const inactive = !t.is_active;
-  const dim      = inactive ? 'opacity-60' : '';
-  const statusBadge = inactive
-    ? '<span class="px-1.5 py-0.5 rounded text-xs badge-pause font-bold">—</span>'
-    : t.status === 'OK'
-      ? '<span class="px-1.5 py-0.5 rounded text-xs badge-ok font-bold">OK</span>'
-      : '<span class="px-1.5 py-0.5 rounded text-xs badge-fault font-bold">FAULT</span>';
-
-  const urlCount = mode === 'app' && t.urls
-    ? (() => { try { return JSON.parse(t.urls).length; } catch { return '?'; } })()
-    : '';
-
-  const cols = mode === 'ping'
-    ? `<td class="px-4 py-2 font-mono text-xs text-blue-400">${escHtml(t.target)}</td>
-       <td class="px-4 py-2 text-gray-400 text-xs">${escHtml(t.os_type || 'Linux')}</td>`
-    : `<td class="px-4 py-2 font-mono text-xs text-blue-400">${escHtml(t.target)}</td>
-       <td class="px-4 py-2 text-gray-500 text-xs">${urlCount} URL${urlCount !== 1 ? 's' : ''}</td>`;
-
-  return `
-    <tr class="border-t border-gray-800 hover:bg-gray-800/30 cursor-pointer ${dim}" onclick="openDetail('${t.id}')">
-      <td class="px-4 py-2 font-medium">
-        ${escHtml(t.name)}
-        ${inactive ? '<span class="ml-1 px-1 py-0.5 rounded text-xs badge-pause">paused</span>' : ''}
-      </td>
-      ${cols}
-      <td class="px-4 py-2 text-gray-400 text-xs">${t.interval_min}m</td>
-      <td class="px-4 py-2 text-gray-400 text-xs">${t.n_threshold}</td>
-      <td class="px-4 py-2">${statusBadge}</td>
-      <td class="px-4 py-2" onclick="event.stopPropagation()">
-        <button onclick="toggleActive('${t.id}',event)"
-          class="px-2 py-0.5 rounded text-xs ${t.is_active ? 'bg-green-900 text-green-300' : 'bg-gray-800 text-gray-500'}">
-          ${t.is_active ? '▶ ON' : '⏸ OFF'}
-        </button>
-      </td>
-      <td class="px-4 py-2" onclick="event.stopPropagation()">
-        <button onclick="toggleEmail('${t.id}',event)"
-          class="px-2 py-0.5 rounded text-xs ${t.email_enabled ? 'bg-blue-900 text-blue-300' : 'bg-gray-800 text-gray-500'}">
-          ${t.email_enabled ? '✉ ON' : '✉ OFF'}
-        </button>
-      </td>
-      <td class="px-4 py-2 text-xs text-gray-500">${t.last_checked ? toIST(t.last_checked) : '—'}</td>
-      <td class="px-4 py-2 text-right" onclick="event.stopPropagation()">
-        <div class="flex items-center justify-end gap-1">
-          <button onclick="runTask('${t.id}')" title="Run now" ${inactive ? 'disabled' : ''}
-            class="px-2 py-1 text-xs rounded ${inactive ? 'bg-gray-800 text-gray-600 cursor-not-allowed' : 'bg-gray-700 hover:bg-gray-600'}">▶</button>
-          <button onclick="openTaskModal('${t.id}')" title="Edit"
-            class="px-2 py-1 text-xs rounded bg-gray-700 hover:bg-gray-600">✎</button>
-          <button onclick="deleteTask('${t.id}','${escAttr(t.name)}')" title="Delete"
-            class="px-2 py-1 text-xs rounded bg-red-900 hover:bg-red-800 text-red-300">🗑</button>
-        </div>
-      </td>
-    </tr>`;
-}
-
-async function toggleActive(id, e) { e.stopPropagation(); await API.toggleActive(id); loadTasks(); }
-async function toggleEmail(id, e)  { e.stopPropagation(); await API.toggleEmail(id);  loadTasks(); }
-
-async function runTask(id) {
-  try {
-    const res = await API.runTask(id);
-    alert(`Run result: ${res.result}${res.errorRaw ? '\n\n' + res.errorRaw : ''}`);
-    loadTasks();
-  } catch (e) { alert('Run failed: ' + e.message); }
-}
-
-async function deleteTask(id, name) {
-  if (!confirm(`Move "${name}" to Recycle Bin?`)) return;
-  await API.deleteTask(id);
-  loadTasks();
-}
-
-// ── Recycle Bin ──────────────────────────────────────────────────────────────
-let binTasks = [];
-async function loadBin() {
-  binTasks = await API.tasksBin().catch(() => []);
-  renderBin();
-}
-
-function renderBin() {
-  const pingSearch = (document.getElementById('searchBinPing')?.value || '').toLowerCase();
-  const appSearch  = (document.getElementById('searchBinApp')?.value  || '').toLowerCase();
-
-  const binPing = binTasks.filter(t => t.type === 'PING' &&
-    (!pingSearch || t.name.toLowerCase().includes(pingSearch) || t.target.toLowerCase().includes(pingSearch)));
-  const binApp  = binTasks.filter(t => t.type === 'APPLICATION' &&
-    (!appSearch  || t.name.toLowerCase().includes(appSearch)  || t.target.toLowerCase().includes(appSearch)));
-
-  const mkBinRows = (list, cols) => list.length
-    ? list.map(t => `
-        <tr class="border-t border-gray-800">
-          <td class="px-4 py-2">${escHtml(t.name)}</td>
-          <td class="px-4 py-2 font-mono text-xs text-gray-500">${escHtml(t.target)}</td>
-          <td class="px-4 py-2 text-xs text-gray-500">${toIST(t.deleted_at)}</td>
-          <td class="px-4 py-2 text-right">
-            <button onclick="restoreTask('${t.id}')"
-              class="px-2 py-1 text-xs rounded bg-green-800 hover:bg-green-700 text-green-300 mr-1">Restore</button>
-            <button onclick="hardDelete('${t.id}','${escAttr(t.name)}')"
-              class="px-2 py-1 text-xs rounded bg-red-900 hover:bg-red-800 text-red-300">Delete Forever</button>
-          </td>
-        </tr>`).join('')
-    : `<tr><td colspan="${cols}" class="px-4 py-8 text-center text-gray-600">Bin is empty.</td></tr>`;
-
-  document.getElementById('binPingBody').innerHTML = mkBinRows(binPing, 4);
-  document.getElementById('binAppBody').innerHTML  = mkBinRows(binApp,  4);
-}
-
-async function restoreTask(id) { await API.restoreTask(id); loadBin(); loadTasks(); }
-async function hardDelete(id, name) {
-  if (!confirm(`Permanently delete "${name}"? This cannot be undone.`)) return;
-  await API.hardDelete(id);
-  loadBin();
-}
-
-// ── Host Mappings ─────────────────────────────────────────────────────────────
-let hostMaps = [];
-async function loadHostMappings() {
-  hostMaps = await API.hostMappings().catch(() => []);
-  renderHostMappings();
-}
-
-function renderHostMappings() {
-  const body = document.getElementById('hostMapsBody');
-  body.innerHTML = hostMaps.length
-    ? hostMaps.map(m => `
-        <tr class="border-t border-gray-800 hover:bg-gray-800/20">
-          <td class="px-4 py-3 font-mono text-blue-300">${escHtml(m.hostname)}</td>
-          <td class="px-4 py-3 font-mono text-green-300">${escHtml(m.ip_address)}</td>
-          <td class="px-4 py-3 text-xs text-gray-500">${escHtml(m.note || '—')}</td>
-          <td class="px-4 py-3 text-xs text-gray-500">${toIST(m.updated_at)}</td>
-          <td class="px-4 py-3 text-right">
-            <button onclick="openHostMapModal('${m.id}')"
-              class="px-2 py-1 text-xs rounded bg-gray-700 hover:bg-gray-600 mr-1">✎ Edit</button>
-            <button onclick="deleteHostMapping('${m.id}','${escAttr(m.hostname)}')"
-              class="px-2 py-1 text-xs rounded bg-red-900 hover:bg-red-800 text-red-300">🗑</button>
-          </td>
-        </tr>`).join('')
-    : '<tr><td colspan="5" class="px-4 py-8 text-center text-gray-600">No host mappings configured. Click + Add Mapping.</td></tr>';
-}
-
-function openHostMapModal(id) {
-  const modal = document.getElementById('hostMapModal');
-  modal.classList.remove('hidden');
-  document.getElementById('hmErr').classList.add('hidden');
-  const m = id ? hostMaps.find(x => x.id === id) : null;
-  document.getElementById('hmTitle').textContent = m ? 'Edit Host Mapping' : 'Add Host Mapping';
-  document.getElementById('hmId').value       = m ? m.id       : '';
-  document.getElementById('hmHostname').value = m ? m.hostname   : '';
-  document.getElementById('hmIp').value       = m ? m.ip_address : '';
-  document.getElementById('hmNote').value     = m ? (m.note || '') : '';
-}
-function closeHostMapModal() { document.getElementById('hostMapModal').classList.add('hidden'); }
-
-async function saveHostMapping() {
-  const id       = document.getElementById('hmId').value;
-  const hostname = document.getElementById('hmHostname').value.trim();
-  const ip       = document.getElementById('hmIp').value.trim();
-  const note     = document.getElementById('hmNote').value.trim();
-  const err      = document.getElementById('hmErr');
-
-  if (!hostname) { err.textContent = 'Hostname is required'; err.classList.remove('hidden'); return; }
-  if (!ip)       { err.textContent = 'IP address is required'; err.classList.remove('hidden'); return; }
-  if (!/^(\d{1,3}\.){3}\d{1,3}$/.test(ip)) {
-    err.textContent = 'Invalid IP address format (e.g. 192.168.108.176)';
-    err.classList.remove('hidden'); return;
-  }
-  err.classList.add('hidden');
-
-  try {
-    if (id) await API.updateHostMapping(id, { hostname, ip_address: ip, note });
-    else    await API.createHostMapping({ hostname, ip_address: ip, note });
-    closeHostMapModal();
-    loadHostMappings();
-  } catch (e) {
-    err.textContent = e.message || 'Save failed';
-    err.classList.remove('hidden');
-  }
-}
-
-async function deleteHostMapping(id, hostname) {
-  if (!confirm(`Delete host mapping for "${hostname}"?`)) return;
-  await API.deleteHostMapping(id);
-  loadHostMappings();
-}
-
-// ── Backup export ─────────────────────────────────────────────────────────────
-function doExport(e) { e.preventDefault(); window.open(API.exportUrl(), '_blank'); }
-
-// ── Import preview ────────────────────────────────────────────────────────────
-let importSessionId = null;
-
-async function doImportPreview(input) {
-  const file = input.files[0];
-  if (!file) return;
-  input.value = '';
-
-  const panel = document.getElementById('importPreviewPanel');
-  panel.classList.remove('hidden');
-  document.getElementById('importResult').innerHTML = '<span class="text-gray-400">Parsing file…</span>';
-  document.getElementById('importErrors').classList.add('hidden');
-
-  try {
-    const data = await API.importPreview(file);
-    importSessionId = data.session_id;
-
-    // Summary panels
-    document.getElementById('prevPing').innerHTML = `
-      <div>Insert: <b class="text-green-400">${data.ping.to_insert}</b></div>
-      <div>Update: <b class="text-yellow-400">${data.ping.to_update}</b></div>
-      <div>Invalid: <b class="text-red-400">${data.ping.invalid}</b></div>`;
-    document.getElementById('prevApp').innerHTML = `
-      <div>Insert: <b class="text-green-400">${data.application.to_insert}</b></div>
-      <div>Update: <b class="text-yellow-400">${data.application.to_update}</b></div>
-      <div>Invalid: <b class="text-red-400">${data.application.invalid}</b></div>`;
-    document.getElementById('prevHost').innerHTML = `
-      <div>Insert: <b class="text-green-400">${data.host_mappings.to_insert}</b></div>
-      <div>Update: <b class="text-yellow-400">${data.host_mappings.to_update}</b></div>
-      <div>Invalid: <b class="text-red-400">${data.host_mappings.invalid}</b></div>`;
-
-    // Validation errors
-    const allErrors = [
-      ...data.ping.errors.map(e => `Ping row ${e.row} "${e.name}": ${e.errors.join(', ')}`),
-      ...data.application.errors.map(e => `App row ${e.row} "${e.name}": ${e.errors.join(', ')}`),
-      ...data.host_mappings.errors.map(e => `Host row ${e.row} "${e.hostname}": ${e.errors.join(', ')}`),
-    ];
-    if (allErrors.length) {
-      const errDiv = document.getElementById('importErrors');
-      errDiv.classList.remove('hidden');
-      errDiv.innerHTML = '<b class="text-red-400">Validation Errors:</b><ul class="mt-1 space-y-0.5 list-disc list-inside">' +
-        allErrors.map(e => `<li>${escHtml(e)}</li>`).join('') + '</ul>';
-    }
-
-    const total = data.totals.to_insert + data.totals.to_update;
-    document.getElementById('importResult').innerHTML = total > 0
-      ? `<span class="text-blue-300">Preview ready: ${data.totals.to_insert} to insert, ${data.totals.to_update} to update, ${data.totals.invalid} invalid. Choose an action above.</span>`
-      : `<span class="text-yellow-400">Nothing to import (0 valid records found). Check your file format.</span>`;
-    document.getElementById('importExpiry').textContent = `Session expires: ${data.expires_at_ist}`;
-
-  } catch (e) {
-    document.getElementById('importResult').innerHTML = `<span class="text-red-400">Preview failed: ${escHtml(e.message)}</span>`;
-  }
-}
-
-async function doImportApply(action) {
-  const res = document.getElementById('importResult');
-
-  if (action === 'cancel') {
-    if (importSessionId) {
-      await API.importApply(importSessionId, 'cancel').catch(() => {});
-    }
-    document.getElementById('importPreviewPanel').classList.add('hidden');
-    document.getElementById('importFile').value = '';
-    importSessionId = null;
-    return;
-  }
-
-  if (!importSessionId) { res.innerHTML = '<span class="text-red-400">No import session. Please re-upload the file.</span>'; return; }
-
-  const labels = {
-    insert_only: 'Insert new records only',
-    update_only: 'Update existing records only',
-    insert_and_update: 'Insert + update all',
-  };
-  if (!confirm(`Confirm: ${labels[action]}?\n\nThis will apply changes to the database.`)) return;
-
-  res.innerHTML = '<span class="text-gray-400">Applying…</span>';
-  try {
-    const data = await API.importApply(importSessionId, action);
-    res.innerHTML = `<span class="text-green-400">✔ Import complete: ${data.inserted} inserted, ${data.updated} updated</span>` +
-      (data.errors?.length ? `<br><span class="text-red-400">Errors: ${data.errors.map(escHtml).join('; ')}</span>` : '');
-    importSessionId = null;
-    loadTasks();
-    loadHostMappings();
-  } catch (e) {
-    res.innerHTML = `<span class="text-red-400">Apply failed: ${escHtml(e.message)}</span>`;
-  }
-}
-
-// ── Task Logs ─────────────────────────────────────────────────────────────────
-let taskLogPage = 0;
-async function loadTaskLogs() { taskLogPage = 0; await _fetchTaskLogs(); }
-async function _fetchTaskLogs() {
-  const q = {
-    group:     'TASK_LOGS',
-    level:     document.getElementById('taskLogLevel').value,
-    task_name: document.getElementById('taskLogSearch').value,
-    page:      taskLogPage,
-  };
-  const data = await API.logs(q).catch(() => ({ logs:[], total:0, totalPages:1, pageSize:25 }));
-  document.getElementById('taskLogsBody').innerHTML = data.logs.length
-    ? data.logs.map(l => logRow(l, ['level','category','task_name','message'])).join('')
-    : '<tr><td colspan="5" class="px-4 py-6 text-center text-gray-600">No task logs found</td></tr>';
-  document.getElementById('taskLogPageLabel').textContent =
-    `Page ${taskLogPage + 1} / ${data.totalPages || 1} (${data.total} total)`;
-}
-function changeTaskLogPage(d) { taskLogPage = Math.max(0, taskLogPage + d); _fetchTaskLogs(); }
-
-// ── Admin Activity Logs ────────────────────────────────────────────────────────
-let adminLogPage = 0;
-async function loadAdminLogs() { adminLogPage = 0; await _fetchAdminLogs(); }
-async function _fetchAdminLogs() {
-  const q = {
-    group: 'ADMIN_LOGS',
-    level: document.getElementById('adminLogLevel').value,
-    page:  adminLogPage,
-  };
-  const data = await API.logs(q).catch(() => ({ logs:[], total:0, totalPages:1 }));
-  document.getElementById('adminLogsBody').innerHTML = data.logs.length
-    ? data.logs.map(l => `
-        <tr class="border-t border-gray-800 hover:bg-gray-800/30 ${logRowBg(l.level)}">
-          <td class="px-3 py-2 text-gray-500 whitespace-nowrap">${toIST(l.created_at)}</td>
-          <td class="px-3 py-2 font-bold ${logLevelColor(l.level)}">${l.level}</td>
-          <td class="px-3 py-2 text-gray-400">${escHtml(l.actor || '')}</td>
-          <td class="px-3 py-2 text-gray-300">${escHtml(l.message)}</td>
-        </tr>`).join('')
-    : '<tr><td colspan="4" class="px-4 py-6 text-center text-gray-600">No admin logs found</td></tr>';
-  document.getElementById('adminLogPageLabel').textContent =
-    `Page ${adminLogPage + 1} / ${data.totalPages || 1} (${data.total} total)`;
-}
-function changeAdminLogPage(d) { adminLogPage = Math.max(0, adminLogPage + d); _fetchAdminLogs(); }
-
-// ── Audit Logs ────────────────────────────────────────────────────────────────
-let auditLogPage = 0;
-async function loadAuditLogs() { auditLogPage = 0; await _fetchAuditLogs(); }
-async function _fetchAuditLogs() {
-  const data = await API.audit({ page: auditLogPage }).catch(() => ({ logs:[], total:0, totalPages:1 }));
-  document.getElementById('auditLogsBody').innerHTML = data.logs.length
-    ? data.logs.map(l => `
-        <tr class="border-t border-gray-800 hover:bg-gray-800/30">
-          <td class="px-3 py-2 text-gray-500 whitespace-nowrap">${toIST(l.created_at)}</td>
-          <td class="px-3 py-2 text-blue-400 font-medium">${escHtml(l.actor || '')}</td>
-          <td class="px-3 py-2 text-gray-300">${escHtml(l.action || '')}</td>
-          <td class="px-3 py-2 text-gray-500 text-xs">${escHtml(l.detail || '')}</td>
-        </tr>`).join('')
-    : '<tr><td colspan="4" class="px-4 py-6 text-center text-gray-600">No audit entries</td></tr>';
-  document.getElementById('auditLogPageLabel').textContent =
-    `Page ${auditLogPage + 1} / ${data.totalPages || 1} (${data.total} total)`;
-}
-function changeAuditLogPage(d) { auditLogPage = Math.max(0, auditLogPage + d); _fetchAuditLogs(); }
-
-// ── Log helpers ────────────────────────────────────────────────────────────────
-function logLevelColor(level) {
-  return level === 'ERROR' ? 'text-red-400' : level === 'WARN' ? 'text-yellow-400' : 'text-green-400';
-}
-function logRowBg(level) {
-  return level === 'ERROR' ? 'bg-red-950/20' : level === 'WARN' ? 'bg-yellow-950/10' : '';
-}
-function logRow(l, fieldKeys) {
-  const fields = {
-    level:     `<td class="px-3 py-2 font-bold ${logLevelColor(l.level)}">${l.level}</td>`,
-    category:  `<td class="px-3 py-2 text-gray-400">${escHtml(l.category)}</td>`,
-    actor:     `<td class="px-3 py-2 text-gray-400">${escHtml(l.actor||'')}</td>`,
-    task_name: `<td class="px-3 py-2 text-blue-400 text-xs">${escHtml(l.task_name||'')}</td>`,
-    message:   `<td class="px-3 py-2 text-gray-300">${escHtml(l.message)}</td>`,
-  };
-  return `
-    <tr class="border-t border-gray-800 hover:bg-gray-800/30 cursor-pointer ${logRowBg(l.level)}"
-        onclick="toggleLogDetail(this, ${JSON.stringify(escHtml(l.detail||''))})">
-      <td class="px-3 py-2 text-gray-500 whitespace-nowrap text-xs">${toIST(l.created_at)}</td>
-      ${fieldKeys.map(k => fields[k] || '').join('')}
-    </tr>
-    <tr class="log-detail hidden border-t border-gray-900">
-      <td colspan="6" class="px-3 pb-2">
-        <pre class="text-xs text-gray-500 rounded p-2" style="background:#0a0e14"></pre>
-      </td>
-    </tr>`;
-}
-function toggleLogDetail(row, detail) {
-  const next = row.nextElementSibling;
-  if (!next?.classList.contains('log-detail')) return;
-  next.classList.toggle('hidden');
-  if (!next.classList.contains('hidden') && detail)
-    next.querySelector('pre').textContent = detail;
-}
-
-// ── Log downloads ─────────────────────────────────────────────────────────────
-function downloadLogs(format) {
-  const range    = document.getElementById('dlRange').value;
-  const category = document.getElementById('dlCategory').value;
-  window.open(API.logsDownloadUrl(range, category, format), '_blank');
-}
-
-// ── Log archives ───────────────────────────────────────────────────────────────
-async function loadArchives() {
-  const data = await API.logArchives().catch(() => ({ archives: [], archive_dir: '' }));
-  const list = document.getElementById('archivesList');
-  if (!data.archives.length) {
-    list.textContent = 'No archives yet. Archives are generated daily at 23:58 IST.';
-    return;
-  }
-  list.innerHTML = data.archives.map(a => `
-    <div class="flex items-center gap-3 py-1 border-b border-gray-800 last:border-0">
-      <span class="text-gray-400 w-24">${escHtml(a.archive_date)}</span>
-      <span class="text-gray-500 w-24">${escHtml(a.category)}</span>
-      <span class="font-mono text-gray-400 flex-1 truncate">${escHtml(a.filename)}</span>
-      <span class="text-gray-600">${Math.round((a.size_bytes||0)/1024)}KB</span>
-      <a href="${API.base()}/api/logs/archives/${a.id}/download"
-         class="text-blue-400 hover:text-blue-300" target="_blank">↓ Download</a>
-    </div>`).join('');
-}
-
-// ── Settings health ───────────────────────────────────────────────────────────
-async function loadHealth() {
-  try {
-    const h = await API.health();
-    const mailOk = h.mail?.binaryOk;
-    const pfxOk  = h.mail?.postfix === 'running';
-    const archiveOk = h.logs?.archiveDirOk;
-
-    document.getElementById('healthInfo').innerHTML = `
-      <div>Monitor Host: <b class="text-white">${h.monitorHost}</b></div>
-      <div>Timezone: <b class="text-white">${h.timezone || 'Asia/Kolkata (IST)'}</b></div>
-      <div>Active Tasks: <b class="text-white">${h.activeTasks}</b>
-        <span class="${h.faultTasks > 0 ? 'text-red-400' : 'text-gray-600'}">(${h.faultTasks} FAULT)</span>
+  return `<tr class="border-t border-gray-800 hover:bg-gray-800/30 cursor-pointer ${dim}" onclick="openDetail('${t.id}')">
+    <td class="px-4 py-2 font-medium">${escHtml(t.name)}</td>
+    ${mode==='ping'?pingCols:appCols}
+    <td class="px-4 py-2 text-gray-400 text-xs">${t.interval_min}m</td>
+    <td class="px-4 py-2 text-gray-400 text-xs">${t.n_threshold}</td>
+    <td class="px-4 py-2">${sb}</td>
+    <td class="px-4 py-2" onclick="event.stopPropagation()">
+      <button onclick="toggleActive('${t.id}',event)" class="px-2 py-0.5 rounded text-xs ${t.is_active?'bg-green-900 text-green-300':'bg-gray-800 text-gray-500'}">${t.is_active?'▶ ON':'⏸ OFF'}</button>
+    </td>
+    <td class="px-4 py-2" onclick="event.stopPropagation()">
+      <button onclick="toggleEmail('${t.id}',event)" class="px-2 py-0.5 rounded text-xs ${t.email_enabled?'bg-blue-900 text-blue-300':'bg-gray-800 text-gray-500'}">${t.email_enabled?'✉ ON':'✉ OFF'}</button>
+    </td>
+    <td class="px-4 py-2 text-xs text-gray-500">${t.last_checked?toIST(t.last_checked):'—'}</td>
+    <td class="px-4 py-2 text-right" onclick="event.stopPropagation()">
+      <div class="flex items-center justify-end gap-1">
+        <button onclick="runTask('${t.id}')" ${inactive?'disabled':''} title="Run now"
+          class="px-2 py-1 text-xs rounded ${inactive?'bg-gray-800 text-gray-600 cursor-not-allowed':'bg-gray-700 hover:bg-gray-600'}">▶</button>
+        <button onclick="openTaskModal('${t.id}')" title="Edit" class="px-2 py-1 text-xs rounded bg-gray-700 hover:bg-gray-600">✎</button>
+        <button onclick="deleteTask('${t.id}','${escAttr(t.name)}')" title="Delete" class="px-2 py-1 text-xs rounded bg-red-900 hover:bg-red-800 text-red-300">🗑</button>
       </div>
-      <div>Open Incidents: <b class="${h.openIncidents > 0 ? 'text-red-400' : 'text-green-400'}">${h.openIncidents}</b></div>
-      <div>DB Size: <b class="text-white">${h.dbSizeKb} KB</b></div>
-      <div>Uptime: <b class="text-white">${Math.floor(h.uptime/60)}m ${h.uptime%60}s</b></div>
-      <div class="pt-2 border-t border-gray-700 mt-2 space-y-1">
-        <div>Mail Binary: <b class="${mailOk ? 'text-green-400' : 'text-red-400'}">${mailOk ? '✔' : '✗'} ${h.mail?.binary || '—'}</b></div>
-        <div>Postfix: <b class="${pfxOk ? 'text-green-400' : 'text-yellow-400'}">${h.mail?.postfix || '—'}</b>
-          <span class="text-gray-600 text-xs ml-1">relay → ${h.mail?.relayHost}</span>
-        </div>
-        <div class="text-xs text-gray-600">From: ${escHtml(h.mail?.fromName)} &lt;${escHtml(h.mail?.fromEmail)}&gt;</div>
-      </div>
-      <div class="pt-2 border-t border-gray-700 mt-2 space-y-1 text-xs">
-        <div>App Logs: <b class="text-white">${h.logs?.appLogCount}</b> / ${h.logs?.appLogMax} (cap)</div>
-        <div>Audit Logs: <b class="text-white">${h.logs?.auditLogCount}</b> / ${h.logs?.auditLogMax} (cap)</div>
-        <div>Archive Files: <b class="text-white">${h.logs?.archiveCount}</b></div>
-        <div>Archive Dir: <b class="${archiveOk ? 'text-green-400' : 'text-red-400'}">${archiveOk ? '✔ ' : '✗ '}${escHtml(h.logs?.archiveDir || '—')}</b></div>
-        <div>Log Retention: <b class="text-white">${h.logs?.retentionDays} days</b></div>
-      </div>`;
-  } catch { document.getElementById('healthInfo').textContent = 'Failed to load health info'; }
+    </td>
+  </tr>`;
 }
 
-async function sendTestMail() {
-  const to  = document.getElementById('testEmailAddr').value.trim();
-  const res = document.getElementById('testMailResult');
-  if (!to) { res.innerHTML = '<span class="text-red-400">Enter a recipient email address</span>'; return; }
-  res.innerHTML = '<span class="text-gray-400">Sending…</span>';
-  try {
-    await API.testMail(to);
-    res.innerHTML = `<span class="text-green-400">✔ Test mail sent to ${escHtml(to)}</span>`;
-  } catch (e) {
-    res.innerHTML = `<span class="text-red-400">Failed: ${escHtml(e.message)}</span>`;
-  }
+async function toggleActive(id,e){ e.stopPropagation(); await API.toggleActive(id); loadTasks(); }
+async function toggleEmail(id,e) { e.stopPropagation(); await API.toggleEmail(id);  loadTasks(); }
+
+async function runTask(id){
+  try{
+    const res=await API.runTask(id);
+    alert(`Run result: ${res.result}${res.errorRaw?'\n\n'+res.errorRaw:''}`);
+    loadTasks();
+  }catch(e){ alert('Run failed: '+e.message); }
 }
 
-// ── Task form modal ───────────────────────────────────────────────────────────
-function openTaskModal(id) {
+async function deleteTask(id,name){
+  if(!confirm(`Move "${name}" to Recycle Bin?`)) return;
+  await API.deleteTask(id); loadTasks();
+}
+
+// ── Recycle Bin ────────────────────────────────────────────────────────────────
+let binTasks=[];
+async function loadBin(){ binTasks=await API.tasksBin().catch(()=>[]); renderBin(); }
+
+function renderBin(){
+  const ps=(document.getElementById('searchBinPing')?.value||'').toLowerCase();
+  const as=(document.getElementById('searchBinApp')?.value||'').toLowerCase();
+  const bp=binTasks.filter(t=>t.type==='PING'&&(!ps||t.name.toLowerCase().includes(ps)||t.target.toLowerCase().includes(ps)));
+  const ba=binTasks.filter(t=>t.type==='APPLICATION'&&(!as||t.name.toLowerCase().includes(as)||t.target.toLowerCase().includes(as)));
+
+  const mkRows=(list,cols)=>list.length?list.map(t=>`
+    <tr class="border-t border-gray-800">
+      <td class="px-4 py-2">${escHtml(t.name)}</td>
+      <td class="px-4 py-2 font-mono text-xs text-gray-500">${escHtml(t.target)}</td>
+      <td class="px-4 py-2 text-xs text-gray-500">${toIST(t.deleted_at)}</td>
+      <td class="px-4 py-2 text-right">
+        <button onclick="restoreTask('${t.id}')" class="px-2 py-1 text-xs rounded bg-green-800 hover:bg-green-700 text-green-300 mr-1">Restore</button>
+        <button onclick="hardDelete('${t.id}','${escAttr(t.name)}')" class="px-2 py-1 text-xs rounded bg-red-900 hover:bg-red-800 text-red-300">Delete Forever</button>
+      </td>
+    </tr>`).join('')
+    :`<tr><td colspan="${cols}" class="px-4 py-8 text-center text-gray-600">Bin is empty.</td></tr>`;
+
+  document.getElementById('binPingBody').innerHTML=mkRows(bp,4);
+  document.getElementById('binAppBody').innerHTML =mkRows(ba,4);
+}
+
+async function restoreTask(id){ await API.restoreTask(id); loadBin(); loadTasks(); }
+async function hardDelete(id,name){
+  if(!confirm(`Permanently delete "${name}"? Cannot be undone.`)) return;
+  await API.hardDelete(id); loadBin();
+}
+
+// ── Task Form Modal ────────────────────────────────────────────────────────────
+function openTaskModal(id){
   document.getElementById('taskModal').classList.remove('hidden');
   document.getElementById('formErr').classList.add('hidden');
-  document.getElementById('testResult').innerHTML = '';
-  document.getElementById('taskId').value = id || '';
+  document.getElementById('testResult').innerHTML='';
+  document.getElementById('taskId').value=id||'';
 
-  if (id) {
-    const t = allTasks.find(x => x.id === id);
-    if (t) {
-      document.getElementById('tmTitle').textContent = 'Edit Task';
-      document.getElementById('fName').value     = t.name;
-      document.getElementById('fType').value     = t.type;
-      document.getElementById('fTarget').value   = t.target;
-      document.getElementById('fOsType').value   = t.os_type || 'Linux';
-      document.getElementById('fInterval').value = t.interval_min;
-      document.getElementById('fN').value        = t.n_threshold;
-      document.getElementById('fL1').value       = t.email_l1 || '';
-      document.getElementById('fL2').value       = t.email_l2 || '';
-      document.getElementById('fL3').value       = t.email_l3 || '';
-      document.getElementById('fEmailEnabled').checked = t.email_enabled !== false;
-      document.getElementById('urlList').innerHTML = '';
-      if (t.type === 'APPLICATION' && t.urls) {
-        let parsed = [];
-        try { parsed = JSON.parse(t.urls); } catch {}
-        parsed.forEach(u => addUrlRow(typeof u === 'string' ? { url: u } : u));
-        if (!parsed.length) addUrlRow();
+  if(id){
+    const t=allTasks.find(x=>x.id===id);
+    if(t){
+      document.getElementById('tmTitle').textContent='Edit Task';
+      document.getElementById('fName').value    =t.name;
+      document.getElementById('fType').value    =t.type;
+      document.getElementById('fTarget').value  =t.target;
+      document.getElementById('fOsType').value  =t.os_type||'Linux';
+      document.getElementById('fInterval').value=t.interval_min;
+      document.getElementById('fN').value       =t.n_threshold;
+      document.getElementById('fL1').value      =t.email_l1||'';
+      document.getElementById('fL2').value      =t.email_l2||'';
+      document.getElementById('fL3').value      =t.email_l3||'';
+      document.getElementById('fEmailEnabled').checked=t.email_enabled!==false&&t.email_enabled!==0;
+      // Host mapping
+      document.getElementById('fHmEnabled').checked   =!!t.host_mapping_enabled;
+      document.getElementById('fHmHostname').value    =t.host_mapping_hostname||'';
+      document.getElementById('fHmIp').value          =t.host_mapping_ip||'';
+      // URL rows
+      document.getElementById('urlList').innerHTML='';
+      if(t.type==='APPLICATION'&&t.urls){
+        let parsed=[]; try{parsed=JSON.parse(t.urls);}catch{}
+        parsed.forEach(u=>addUrlRow(typeof u==='string'?{url:u}:u));
+        if(!parsed.length) addUrlRow();
       }
     }
   } else {
-    document.getElementById('tmTitle').textContent = 'Add Task';
-    document.getElementById('fName').value    = '';
-    document.getElementById('fType').value    = 'PING';
-    document.getElementById('fTarget').value  = '';
-    document.getElementById('fOsType').value  = 'Linux';
-    document.getElementById('fInterval').value = 5;
-    document.getElementById('fN').value       = 2;
-    document.getElementById('fL1').value      = '';
-    document.getElementById('fL2').value      = '';
-    document.getElementById('fL3').value      = '';
-    document.getElementById('fEmailEnabled').checked = true;
-    document.getElementById('urlList').innerHTML = '';
+    document.getElementById('tmTitle').textContent='Add Task';
+    document.getElementById('fName').value    ='';
+    document.getElementById('fType').value    ='PING';
+    document.getElementById('fTarget').value  ='';
+    document.getElementById('fOsType').value  ='Linux';
+    document.getElementById('fInterval').value=5;
+    document.getElementById('fN').value       =2;
+    document.getElementById('fL1').value=''; document.getElementById('fL2').value=''; document.getElementById('fL3').value='';
+    document.getElementById('fEmailEnabled').checked=true;
+    document.getElementById('fHmEnabled').checked=false;
+    document.getElementById('fHmHostname').value='';
+    document.getElementById('fHmIp').value='';
+    document.getElementById('urlList').innerHTML='';
   }
-  onTypeChange();
-  onEmailToggle();
+  onTypeChange(); onEmailToggle(); onHmToggle();
+}
+function closeTaskModal(){ document.getElementById('taskModal').classList.add('hidden'); }
+
+function onTypeChange(){
+  const type=document.getElementById('fType').value;
+  document.getElementById('pingFields').classList.toggle('hidden',type!=='PING');
+  document.getElementById('urlFields').classList.toggle('hidden',type!=='APPLICATION');
+  document.getElementById('hostMappingSection').classList.toggle('hidden',type!=='APPLICATION');
+  document.getElementById('targetLabel').textContent=type==='PING'?'Target IP / Hostname *':'Server IP / Hostname *';
+  if(type==='APPLICATION'&&!document.getElementById('urlList').children.length) addUrlRow();
 }
 
-function closeTaskModal() { document.getElementById('taskModal').classList.add('hidden'); }
-
-function onTypeChange() {
-  const type = document.getElementById('fType').value;
-  document.getElementById('pingFields').classList.toggle('hidden', type !== 'PING');
-  document.getElementById('urlFields').classList.toggle('hidden', type !== 'APPLICATION');
-  document.getElementById('targetLabel').textContent =
-    type === 'PING' ? 'Target IP / Hostname *' : 'Server IP / Hostname *';
-  // Ensure at least one URL row when switching to APPLICATION
-  if (type === 'APPLICATION' && document.getElementById('urlList').children.length === 0) {
-    addUrlRow();
-  }
+function onEmailToggle(){
+  document.getElementById('emailFields').style.opacity=document.getElementById('fEmailEnabled').checked?'':'0.4';
 }
 
-function onEmailToggle() {
-  const en = document.getElementById('fEmailEnabled').checked;
-  document.getElementById('emailFields').style.opacity = en ? '' : '0.4';
+function onHmToggle(){
+  const on=document.getElementById('fHmEnabled').checked;
+  document.getElementById('hmFields').classList.toggle('hidden',!on);
+  updateHmPreview();
 }
 
-let urlRowId = 0;
-function addUrlRow(data = {}) {
-  const id = ++urlRowId;
-  const row = document.createElement('div');
-  row.className = 'flex gap-2 items-start rounded-lg border border-gray-700 p-3';
-  row.style.background = '#0d1117';
-  row.id = 'urlRow' + id;
-  row.innerHTML = `
-    <div class="flex-1 space-y-2">
-      <input placeholder="https://example.com/health (or http://hostname:port/path)"
-        value="${escAttr(data.url || '')}"
-        class="url-input w-full px-3 py-2 rounded-lg text-xs border border-gray-700"
-        style="background:#161b22;color:#f0f6fc;">
-      <div class="flex gap-2">
-        <div class="flex-1">
-          <label class="text-xs text-gray-600">Expected HTTP status (optional)</label>
-          <input placeholder="200" value="${escAttr(data.expected_status ? String(data.expected_status) : '')}"
-            type="number" min="100" max="599"
-            class="url-status w-full mt-0.5 px-2 py-1.5 rounded text-xs border border-gray-700"
-            style="background:#161b22;color:#f0f6fc;">
-        </div>
-        <div class="w-28">
-          <label class="text-xs text-gray-600">Timeout (sec, opt)</label>
-          <input placeholder="15" value="${escAttr(data.timeout_sec ? String(data.timeout_sec) : '')}"
-            type="number" min="1" max="120"
-            class="url-timeout w-full mt-0.5 px-2 py-1.5 rounded text-xs border border-gray-700"
-            style="background:#161b22;color:#f0f6fc;">
+function updateHmPreview(){
+  const hn=document.getElementById('fHmHostname').value.trim()||'hostname';
+  const ip=document.getElementById('fHmIp').value.trim()||'IP address';
+  document.getElementById('hmPreviewHostname').textContent=hn;
+  document.getElementById('hmPreviewIp').textContent=ip;
+}
+// live preview update
+['fHmHostname','fHmIp'].forEach(id=>{
+  document.getElementById(id)?.addEventListener('input', updateHmPreview);
+});
+
+// ── URL rows ───────────────────────────────────────────────────────────────────
+let urlRowId=0;
+function addUrlRow(data={}){
+  const id=++urlRowId;
+  const row=document.createElement('div');
+  row.id='urlRow'+id;
+  row.className='rounded-lg border border-gray-700 p-3';
+  row.style.background='#0d1117';
+  row.innerHTML=`
+    <div class="flex gap-2 items-start">
+      <div class="flex-1 space-y-2">
+        <input placeholder="http://hostname:port/path  or  http://192.168.x.x:port/path"
+          value="${escAttr(data.url||'')}"
+          class="url-input w-full px-3 py-2 rounded-lg text-xs border border-gray-700"
+          style="background:#161b22;color:#f0f6fc;">
+        <div class="flex gap-2">
+          <div class="flex-1">
+            <label class="text-xs text-gray-600">Expected HTTP status (optional, e.g. 200)</label>
+            <input placeholder="200" value="${escAttr(data.expected_status?String(data.expected_status):'')}"
+              type="number" min="100" max="599"
+              class="url-status w-full mt-0.5 px-2 py-1.5 rounded text-xs border border-gray-700"
+              style="background:#161b22;color:#f0f6fc;">
+          </div>
+          <div class="w-28">
+            <label class="text-xs text-gray-600">Timeout sec (opt)</label>
+            <input placeholder="15" value="${escAttr(data.timeout_sec?String(data.timeout_sec):'')}"
+              type="number" min="1" max="120"
+              class="url-timeout w-full mt-0.5 px-2 py-1.5 rounded text-xs border border-gray-700"
+              style="background:#161b22;color:#f0f6fc;">
+          </div>
         </div>
       </div>
-    </div>
-    <button type="button" onclick="document.getElementById('urlRow${id}').remove()"
-      class="mt-2 text-red-500 hover:text-red-300 text-lg leading-none shrink-0">×</button>`;
+      <button type="button" onclick="document.getElementById('urlRow${id}').remove()"
+        class="mt-2 text-red-500 hover:text-red-300 text-lg leading-none shrink-0">×</button>
+    </div>`;
   document.getElementById('urlList').appendChild(row);
 }
 
-function collectUrls() {
+function collectUrls(){
   return Array.from(document.getElementById('urlList').querySelectorAll('[id^="urlRow"]'))
-    .map(row => ({
+    .map(row=>({
       url:             row.querySelector('.url-input').value.trim(),
-      expected_status: parseInt(row.querySelector('.url-status').value) || null,
-      timeout_sec:     parseInt(row.querySelector('.url-timeout').value) || 15,
-    })).filter(u => u.url);
+      expected_status: parseInt(row.querySelector('.url-status').value)||null,
+      timeout_sec:     parseInt(row.querySelector('.url-timeout').value)||15,
+    })).filter(u=>u.url);
 }
 
 // ── Frontend validation ────────────────────────────────────────────────────────
-function validateTaskForm(payload, type) {
-  if (!payload.name) return 'Task name is required';
-  if (!payload.target) return 'Target is required';
-  if (payload.interval_min < 3 || payload.interval_min > 15)
-    return 'Check interval must be between 3 and 15 minutes';
-  if (payload.n_threshold < 1 || payload.n_threshold > 5)
-    return 'N Threshold must be between 1 and 5';
-  if (type === 'APPLICATION') {
-    const urls = JSON.parse(payload.urls || '[]');
-    if (!urls.length) return 'At least one URL is required for Application tasks';
-    for (let i = 0; i < urls.length; i++) {
-      if (!urls[i].url || !urls[i].url.startsWith('http'))
+function validateTaskForm(payload,type){
+  if(!payload.name)   return 'Task name is required';
+  if(!payload.target) return 'Target is required';
+  if(payload.interval_min<3||payload.interval_min>15) return 'Check interval must be 3–15 minutes';
+  if(payload.n_threshold<1||payload.n_threshold>5)    return 'N Threshold must be 1–5';
+  if(type==='APPLICATION'){
+    const urls=JSON.parse(payload.urls||'[]');
+    if(!urls.length) return 'At least one URL is required';
+    for(let i=0;i<urls.length;i++){
+      if(!urls[i].url||!urls[i].url.startsWith('http'))
         return `URL ${i+1}: must start with http or https`;
+    }
+    if(payload.host_mapping_enabled){
+      if(!payload.host_mapping_hostname) return 'Host mapping: hostname is required';
+      if(!payload.host_mapping_ip)       return 'Host mapping: IP address is required';
+      if(!/^(\d{1,3}\.){3}\d{1,3}$/.test(payload.host_mapping_ip))
+        return `Host mapping: "${payload.host_mapping_ip}" is not a valid IPv4 address`;
     }
   }
   return null;
 }
 
-async function testBeforeSave() {
-  const type   = document.getElementById('fType').value;
-  const target = document.getElementById('fTarget').value.trim();
-  const urls   = type === 'APPLICATION' ? collectUrls() : null;
-  const res    = document.getElementById('testResult');
-  res.innerHTML = '<span class="text-gray-400">Testing…</span>';
-  try {
-    const data = await API.testTask({ type, target, urls: urls ? JSON.stringify(urls) : null });
-    const ok   = data.result === 'PASS';
-    res.innerHTML = `<span class="${ok ? 'text-green-400' : 'text-red-400'}">${ok ? '✔' : '✗'} ${data.result}</span>
-      ${data.responseMs ? ` — ${data.responseMs}ms` : ''}
-      ${data.errorRaw ? `<pre class="text-xs text-red-300 mt-1 p-2 rounded" style="background:#0a0e14">${escHtml(data.errorRaw)}</pre>` : ''}`;
-    if (data.endpointResults?.length) {
-      res.innerHTML += '<div class="mt-2 space-y-1">' +
-        data.endpointResults.map(ep =>
-          `<div class="text-xs ${ep.result === 'PASS' ? 'text-green-400' : 'text-red-400'}">
-            ${ep.result} — ${escHtml(ep.url)} ${ep.errorRaw ? '— ' + escHtml(ep.errorRaw) : ''}
-          </div>`).join('') + '</div>';
+async function testBeforeSave(){
+  const type=document.getElementById('fType').value;
+  const target=document.getElementById('fTarget').value.trim();
+  const urls=type==='APPLICATION'?collectUrls():null;
+  const hmEnabled=document.getElementById('fHmEnabled').checked;
+  const res=document.getElementById('testResult');
+  res.innerHTML='<span class="text-gray-400">Testing…</span>';
+  try{
+    const data=await API.testTask({
+      type, target,
+      urls:                  urls?JSON.stringify(urls):null,
+      host_mapping_enabled:  hmEnabled,
+      host_mapping_hostname: document.getElementById('fHmHostname').value.trim(),
+      host_mapping_ip:       document.getElementById('fHmIp').value.trim(),
+    });
+    const ok=data.result==='PASS';
+    res.innerHTML=`<span class="${ok?'text-green-400':'text-red-400'}">${ok?'✔':'✗'} ${data.result}</span>`
+      +(data.responseMs?` — ${data.responseMs}ms`:'')
+      +(data.errorRaw?`<pre class="text-xs text-red-300 mt-1 p-2 rounded" style="background:#0a0e14">${escHtml(data.errorRaw)}</pre>`:'');
+    if(data.endpointResults?.length){
+      res.innerHTML+='<div class="mt-2 space-y-1">'+data.endpointResults.map(ep=>
+        `<div class="text-xs ${ep.result==='PASS'?'text-green-400':'text-red-400'}">
+          ${ep.result} — ${escHtml(ep.url)} ${ep.httpStatus?'HTTP '+ep.httpStatus:''} ${ep.responseMs?ep.responseMs+'ms':''}
+          ${ep.errorRaw?'<br><span class="text-red-300 text-xs">'+escHtml(ep.errorRaw)+'</span>':''}
+        </div>`).join('')+'</div>';
     }
-  } catch (e) {
-    res.innerHTML = `<span class="text-red-400">Test error: ${escHtml(e.message)}</span>`;
-  }
+  }catch(e){ res.innerHTML=`<span class="text-red-400">Test error: ${escHtml(e.message)}</span>`; }
 }
 
-async function saveTask() {
-  const id   = document.getElementById('taskId').value;
-  const type = document.getElementById('fType').value;
-  const urls = type === 'APPLICATION' ? collectUrls() : null;
-  const err  = document.getElementById('formErr');
+async function saveTask(){
+  const id   =document.getElementById('taskId').value;
+  const type =document.getElementById('fType').value;
+  const urls =type==='APPLICATION'?collectUrls():null;
+  const err  =document.getElementById('formErr');
   err.classList.add('hidden');
 
-  const payload = {
-    name:          document.getElementById('fName').value.trim(),
+  const hmEnabled=type==='APPLICATION'&&document.getElementById('fHmEnabled').checked;
+
+  const payload={
+    name:                  document.getElementById('fName').value.trim(),
     type,
-    target:        document.getElementById('fTarget').value.trim(),
-    os_type:       document.getElementById('fOsType').value,
-    interval_min:  parseInt(document.getElementById('fInterval').value),
-    n_threshold:   parseInt(document.getElementById('fN').value),
-    email_l1:      document.getElementById('fL1').value.trim(),
-    email_l2:      document.getElementById('fL2').value.trim(),
-    email_l3:      document.getElementById('fL3').value.trim(),
-    email_enabled: document.getElementById('fEmailEnabled').checked,
-    urls:          urls ? JSON.stringify(urls) : null,
+    target:                document.getElementById('fTarget').value.trim(),
+    os_type:               document.getElementById('fOsType').value,
+    interval_min:          parseInt(document.getElementById('fInterval').value),
+    n_threshold:           parseInt(document.getElementById('fN').value),
+    email_l1:              document.getElementById('fL1').value.trim(),
+    email_l2:              document.getElementById('fL2').value.trim(),
+    email_l3:              document.getElementById('fL3').value.trim(),
+    email_enabled:         document.getElementById('fEmailEnabled').checked,
+    urls:                  urls?JSON.stringify(urls):null,
+    host_mapping_enabled:  hmEnabled,
+    host_mapping_hostname: hmEnabled?document.getElementById('fHmHostname').value.trim():'',
+    host_mapping_ip:       hmEnabled?document.getElementById('fHmIp').value.trim():'',
   };
 
-  const clientErr = validateTaskForm(payload, type);
-  if (clientErr) { err.textContent = clientErr; err.classList.remove('hidden'); return; }
+  const clientErr=validateTaskForm(payload,type);
+  if(clientErr){ err.textContent=clientErr; err.classList.remove('hidden'); return; }
 
-  try {
-    if (id) await API.updateTask(id, payload);
-    else    await API.createTask(payload);
-    closeTaskModal();
-    loadTasks();
-  } catch (e) {
-    err.textContent = e.message || 'Save failed';
-    err.classList.remove('hidden');
-  }
+  try{
+    if(id) await API.updateTask(id,payload);
+    else   await API.createTask(payload);
+    closeTaskModal(); loadTasks();
+  }catch(e){ err.textContent=e.message||'Save failed'; err.classList.remove('hidden'); }
 }
 
-// ── Task detail modal ──────────────────────────────────────────────────────────
-async function openDetail(id) {
+// ── Task Detail Modal ──────────────────────────────────────────────────────────
+async function openDetail(id){
   document.getElementById('detailModal').classList.remove('hidden');
-  document.getElementById('dtTitle').textContent = '…';
-  document.getElementById('dtBody').innerHTML = '<div class="text-gray-500">Loading…</div>';
+  document.getElementById('dtTitle').textContent='…';
+  document.getElementById('dtBody').innerHTML='<div class="text-gray-500">Loading…</div>';
+  try{
+    const t=await API.task(id);
+    document.getElementById('dtTitle').textContent=t.name;
 
-  try {
-    const t = await API.task(id);
-    document.getElementById('dtTitle').textContent = t.name;
-
-    const incHtml = t.incident ? `
-      <div class="px-3 py-2 rounded-lg border border-red-800 bg-red-950/40 text-sm">
+    const incHtml=t.incident?`
+      <div class="px-3 py-2 rounded-lg border border-red-800 bg-red-950/40">
         <b class="text-red-300">⚠ FAULT</b> — Open since ${toIST(t.incident.t0)}
-        ${t.incident_duration ? ` (${t.incident_duration})` : ''}
+        ${t.incident_duration?` (${t.incident_duration})`:''}
         <div class="text-xs text-gray-500 mt-1 space-y-0.5">
-          <div>L1: ${t.incident.l1_sent_at ? '✔ ' + toIST(t.incident.l1_sent_at) : '—'}</div>
-          <div>L2: ${t.incident.l2_sent_at ? '✔ ' + toIST(t.incident.l2_sent_at) : 'Pending at T0+48h'}</div>
-          <div>L3: ${t.incident.l3_sent_at ? '✔ ' + toIST(t.incident.l3_sent_at) : 'Pending (repeats every 48h after L2)'}</div>
+          <div>L1: ${t.incident.l1_sent_at?'✔ '+toIST(t.incident.l1_sent_at):'—'}</div>
+          <div>L2: ${t.incident.l2_sent_at?'✔ '+toIST(t.incident.l2_sent_at):'Pending at T0+48h'}</div>
+          <div>L3: ${t.incident.l3_sent_at?'✔ '+toIST(t.incident.l3_sent_at):'Repeats every 48h after L2'}</div>
         </div>
-      </div>` : `<div class="px-3 py-2 rounded-lg border border-green-800 bg-green-950/30 text-sm text-green-300">✔ OK — No active incident</div>`;
+      </div>`
+      :`<div class="px-3 py-2 rounded-lg border border-green-800 bg-green-950/30 text-green-300">✔ No active incident</div>`;
 
-    const epHtml = t.type === 'APPLICATION' && t.last_endpoint_results ? `
+    // Host mapping info (APPLICATION only)
+    const hmHtml=t.type==='APPLICATION'&&t.host_mapping_enabled?`
+      <div class="hm-box text-xs space-y-1">
+        <div class="text-blue-300 font-medium">🔗 Hostname Mapping Active</div>
+        <div>Hostname: <code class="text-blue-200">${escHtml(t.host_mapping_hostname)}</code></div>
+        <div>Mapped IP: <code class="text-green-300">${escHtml(t.host_mapping_ip)}</code></div>
+        <div class="text-gray-500">TCP connects to ${escHtml(t.host_mapping_ip)} — Host header uses ${escHtml(t.host_mapping_hostname)}</div>
+      </div>`
+      :(t.type==='APPLICATION'?'<div class="text-xs text-gray-600">Hostname mapping: not enabled (using direct IP or DNS)</div>':'');
+
+    const epHtml=t.type==='APPLICATION'&&t.last_endpoint_results?`
       <div>
         <div class="text-xs text-gray-500 uppercase mb-2">Endpoint Results</div>
-        ${t.last_endpoint_results.map(ep => `
-          <div class="flex items-center gap-2 text-xs px-2 py-1 rounded mb-1 ${ep.result === 'FAIL' ? 'bg-red-950/30' : ''}">
-            <span class="${ep.result === 'PASS' ? 'text-green-400' : 'text-red-400'} w-8 font-bold">${ep.result}</span>
-            <span class="font-mono text-blue-300 flex-1 truncate">${escHtml(ep.url)}</span>
-            ${ep.httpStatus ? `<span class="text-gray-500">HTTP ${ep.httpStatus}</span>` : ''}
-            ${ep.responseMs ? `<span class="text-gray-600">${ep.responseMs}ms</span>` : ''}
+        ${t.last_endpoint_results.map(ep=>`
+          <div class="flex items-start gap-2 text-xs px-2 py-1 rounded mb-1 ${ep.result==='FAIL'?'bg-red-950/30':''}">
+            <span class="${ep.result==='PASS'?'text-green-400':'text-red-400'} w-8 font-bold shrink-0">${ep.result}</span>
+            <div class="flex-1 min-w-0">
+              <div class="font-mono text-blue-300 truncate">${escHtml(ep.url)}</div>
+              ${ep.httpStatus?`<div class="text-gray-500">HTTP ${ep.httpStatus}${ep.responseMs?' — '+ep.responseMs+'ms':''}</div>`:''}
+              ${ep.errorRaw?`<div class="text-red-300 mt-0.5 break-all">${escHtml(ep.errorRaw)}</div>`:''}
+            </div>
           </div>`).join('')}
-      </div>` : '';
+      </div>`:''
 
-    const errHtml = t.last_error_raw ? `
+    const errHtml=t.last_error_raw?`
       <div>
         <div class="text-xs text-gray-500 uppercase mb-1">Raw Error</div>
         <pre class="text-xs text-red-300 rounded p-3" style="background:#0d1117;border-left:3px solid #ef4444">${escHtml(t.last_error_raw)}</pre>
-      </div>` : '';
+      </div>`:'';
 
-    const checks = t.checks?.slice(0,15).map(c => `
+    const checks=t.checks?.slice(0,15).map(c=>`
       <div class="flex items-center gap-2 text-xs px-2 py-1 border-b border-gray-800 last:border-0">
-        <span class="${c.result === 'PASS' ? 'text-green-400' : 'text-red-400'} w-8 font-bold">${c.result}</span>
+        <span class="${c.result==='PASS'?'text-green-400':'text-red-400'} w-8 font-bold">${c.result}</span>
         <span class="text-gray-500">${toIST(c.checked_at)}</span>
-        ${c.response_ms ? `<span class="text-gray-600 ml-auto">${c.response_ms}ms</span>` : ''}
-      </div>`).join('') || '<div class="text-xs text-gray-600 px-2 py-1">No checks yet</div>';
+        ${c.response_ms?`<span class="text-gray-600 ml-auto">${c.response_ms}ms`:''}
+      </div>`).join('')||'<div class="text-xs text-gray-600 px-2 py-1">No checks yet</div>';
 
-    document.getElementById('dtBody').innerHTML = `
+    document.getElementById('dtBody').innerHTML=`
       <div class="grid grid-cols-2 gap-2 text-xs text-gray-400">
         <div>Type: <b class="text-white">${t.type}</b></div>
         <div>Target: <b class="text-blue-300 font-mono">${escHtml(t.target)}</b></div>
@@ -1430,48 +907,216 @@ async function openDetail(id) {
         <div>N Threshold: <b class="text-white">${t.n_threshold}</b></div>
         <div>Last Check: <b class="text-white">${toIST(t.last_checked)}</b></div>
       </div>
+      ${hmHtml}
       ${incHtml}
       ${epHtml}
       ${errHtml}
       <div class="text-xs text-gray-500 space-y-0.5">
-        <div>Email: <b class="${t.email_enabled ? 'text-green-400' : 'text-gray-600'}">${t.email_enabled ? 'Enabled' : 'Disabled'}</b></div>
-        ${t.email_l1 ? `<div>L1: <span class="text-blue-300">${escHtml(t.email_l1)}</span></div>` : ''}
-        ${t.email_l2 ? `<div>L2: <span class="text-blue-300">${escHtml(t.email_l2)}</span></div>` : ''}
-        ${t.email_l3 ? `<div>L3: <span class="text-blue-300">${escHtml(t.email_l3)}</span></div>` : ''}
+        <div>Email: <b class="${t.email_enabled?'text-green-400':'text-gray-600'}">${t.email_enabled?'Enabled':'Disabled'}</b></div>
+        ${t.email_l1?`<div>L1: <span class="text-blue-300">${escHtml(t.email_l1)}</span></div>`:''}
+        ${t.email_l2?`<div>L2: <span class="text-blue-300">${escHtml(t.email_l2)}</span></div>`:''}
+        ${t.email_l3?`<div>L3: <span class="text-blue-300">${escHtml(t.email_l3)}</span></div>`:''}
       </div>
       <div>
         <div class="text-xs text-gray-500 uppercase mb-1">Recent Checks</div>
         <div class="rounded-lg overflow-hidden" style="background:#0d1117">${checks}</div>
       </div>
       <div class="flex gap-2">
-        <button onclick="runTask('${t.id}')"
-          class="px-3 py-2 text-sm rounded-lg bg-gray-700 hover:bg-gray-600 transition">▶ Run Now</button>
-        <button onclick="closeDetailModal();openTaskModal('${t.id}')"
-          class="px-3 py-2 text-sm rounded-lg bg-gray-700 hover:bg-gray-600 transition">✎ Edit</button>
+        <button onclick="runTask('${t.id}')" class="px-3 py-2 text-sm rounded-lg bg-gray-700 hover:bg-gray-600 transition">▶ Run Now</button>
+        <button onclick="closeDetailModal();openTaskModal('${t.id}')" class="px-3 py-2 text-sm rounded-lg bg-gray-700 hover:bg-gray-600 transition">✎ Edit</button>
       </div>`;
-  } catch (e) {
-    document.getElementById('dtBody').innerHTML = `<div class="text-red-400">Failed: ${escHtml(e.message)}</div>`;
+  }catch(e){ document.getElementById('dtBody').innerHTML=`<div class="text-red-400">Failed: ${escHtml(e.message)}</div>`; }
+}
+function closeDetailModal(){ document.getElementById('detailModal').classList.add('hidden'); }
+
+// ── Backup ─────────────────────────────────────────────────────────────────────
+function doExport(e){ e.preventDefault(); window.open(API.exportUrl(),'_blank'); }
+
+let importSessionId=null;
+async function doImportPreview(input){
+  const file=input.files[0]; if(!file) return; input.value='';
+  const panel=document.getElementById('importPreviewPanel');
+  panel.classList.remove('hidden');
+  document.getElementById('importResult').innerHTML='<span class="text-gray-400">Parsing file…</span>';
+  document.getElementById('importErrors').classList.add('hidden');
+  try{
+    const data=await API.importPreview(file);
+    importSessionId=data.session_id;
+    document.getElementById('prevPing').innerHTML=
+      `<div>Insert: <b class="text-green-400">${data.ping.to_insert}</b></div>
+       <div>Update: <b class="text-yellow-400">${data.ping.to_update}</b></div>
+       <div>Invalid: <b class="text-red-400">${data.ping.invalid}</b></div>`;
+    document.getElementById('prevApp').innerHTML=
+      `<div>Insert: <b class="text-green-400">${data.application.to_insert}</b></div>
+       <div>Update: <b class="text-yellow-400">${data.application.to_update}</b></div>
+       <div>Invalid: <b class="text-red-400">${data.application.invalid}</b></div>`;
+    const allErrors=[
+      ...data.ping.errors.map(e=>`Ping row ${e.row} "${e.name}": ${e.errors.join(', ')}`),
+      ...data.application.errors.map(e=>`App row ${e.row} "${e.name}": ${e.errors.join(', ')}`),
+    ];
+    if(allErrors.length){
+      const ed=document.getElementById('importErrors');
+      ed.classList.remove('hidden');
+      ed.innerHTML='<b class="text-red-400">Validation Errors:</b><ul class="mt-1 space-y-0.5 list-disc list-inside">'+
+        allErrors.map(e=>`<li>${escHtml(e)}</li>`).join('')+'</ul>';
+    }
+    const total=data.totals.to_insert+data.totals.to_update;
+    document.getElementById('importResult').innerHTML=total>0
+      ?`<span class="text-blue-300">Preview ready: ${data.totals.to_insert} to insert, ${data.totals.to_update} to update. Choose an action above.</span>`
+      :`<span class="text-yellow-400">Nothing to import (0 valid records). Check your file.</span>`;
+    document.getElementById('importExpiry').textContent='Session expires: '+data.expires_at_ist;
+  }catch(e){
+    document.getElementById('importResult').innerHTML=`<span class="text-red-400">Preview failed: ${escHtml(e.message)}</span>`;
   }
 }
-function closeDetailModal() { document.getElementById('detailModal').classList.add('hidden'); }
 
-// ── Modal backdrops + Escape ──────────────────────────────────────────────────
-['taskModal','detailModal','hostMapModal'].forEach(id => {
-  document.getElementById(id).addEventListener('click', e => {
-    if (e.target === document.getElementById(id)) document.getElementById(id).classList.add('hidden');
+async function doImportApply(action){
+  const res=document.getElementById('importResult');
+  if(action==='cancel'){
+    if(importSessionId) await API.importApply(importSessionId,'cancel').catch(()=>{});
+    document.getElementById('importPreviewPanel').classList.add('hidden');
+    document.getElementById('importFile').value=''; importSessionId=null; return;
+  }
+  if(!importSessionId){ res.innerHTML='<span class="text-red-400">No session. Re-upload the file.</span>'; return; }
+  const labels={insert_only:'Insert new only',update_only:'Update existing only',insert_and_update:'Insert + update all'};
+  if(!confirm(`Confirm: ${labels[action]}?\n\nThis will apply changes to the database.`)) return;
+  res.innerHTML='<span class="text-gray-400">Applying…</span>';
+  try{
+    const data=await API.importApply(importSessionId,action);
+    res.innerHTML=`<span class="text-green-400">✔ Import complete: ${data.inserted} inserted, ${data.updated} updated</span>`
+      +(data.errors?.length?`<br><span class="text-red-400">Errors: ${data.errors.map(escHtml).join('; ')}</span>`:'');
+    importSessionId=null; loadTasks();
+  }catch(e){ res.innerHTML=`<span class="text-red-400">Apply failed: ${escHtml(e.message)}</span>`; }
+}
+
+// ── Logs ───────────────────────────────────────────────────────────────────────
+let taskLogPage=0,adminLogPage=0,auditLogPage=0;
+
+async function loadTaskLogs(){ taskLogPage=0; await _fetchTaskLogs(); }
+async function _fetchTaskLogs(){
+  const q={group:'TASK_LOGS',level:document.getElementById('taskLogLevel').value,
+    task_name:document.getElementById('taskLogSearch').value,page:taskLogPage};
+  const data=await API.logs(q).catch(()=>({logs:[],total:0,totalPages:1}));
+  document.getElementById('taskLogsBody').innerHTML=data.logs.length
+    ?data.logs.map(l=>logRow(l)).join('')
+    :'<tr><td colspan="5" class="px-4 py-6 text-center text-gray-600">No task logs</td></tr>';
+  document.getElementById('taskLogPageLabel').textContent=`Page ${taskLogPage+1}/${data.totalPages||1} (${data.total})`;
+}
+function changeTaskLogPage(d){ taskLogPage=Math.max(0,taskLogPage+d); _fetchTaskLogs(); }
+
+async function loadAdminLogs(){ adminLogPage=0; await _fetchAdminLogs(); }
+async function _fetchAdminLogs(){
+  const q={group:'ADMIN_LOGS',level:document.getElementById('adminLogLevel').value,page:adminLogPage};
+  const data=await API.logs(q).catch(()=>({logs:[],total:0,totalPages:1}));
+  document.getElementById('adminLogsBody').innerHTML=data.logs.length
+    ?data.logs.map(l=>`<tr class="border-t border-gray-800 hover:bg-gray-800/30 ${logRowBg(l.level)}">
+        <td class="px-3 py-2 text-gray-500 whitespace-nowrap">${toIST(l.created_at)}</td>
+        <td class="px-3 py-2 font-bold ${logLevelColor(l.level)}">${l.level}</td>
+        <td class="px-3 py-2 text-gray-400">${escHtml(l.actor||'')}</td>
+        <td class="px-3 py-2 text-gray-300">${escHtml(l.message)}</td></tr>`).join('')
+    :'<tr><td colspan="4" class="px-4 py-6 text-center text-gray-600">No admin logs</td></tr>';
+  document.getElementById('adminLogPageLabel').textContent=`Page ${adminLogPage+1}/${data.totalPages||1} (${data.total})`;
+}
+function changeAdminLogPage(d){ adminLogPage=Math.max(0,adminLogPage+d); _fetchAdminLogs(); }
+
+async function loadAuditLogs(){ auditLogPage=0; await _fetchAuditLogs(); }
+async function _fetchAuditLogs(){
+  const data=await API.audit({page:auditLogPage}).catch(()=>({logs:[],total:0,totalPages:1}));
+  document.getElementById('auditLogsBody').innerHTML=data.logs.length
+    ?data.logs.map(l=>`<tr class="border-t border-gray-800 hover:bg-gray-800/30">
+        <td class="px-3 py-2 text-gray-500 whitespace-nowrap">${toIST(l.created_at)}</td>
+        <td class="px-3 py-2 text-blue-400 font-medium">${escHtml(l.actor||'')}</td>
+        <td class="px-3 py-2 text-gray-300">${escHtml(l.action||'')}</td>
+        <td class="px-3 py-2 text-gray-500 text-xs">${escHtml(l.detail||'')}</td></tr>`).join('')
+    :'<tr><td colspan="4" class="px-4 py-6 text-center text-gray-600">No audit entries</td></tr>';
+  document.getElementById('auditLogPageLabel').textContent=`Page ${auditLogPage+1}/${data.totalPages||1} (${data.total})`;
+}
+function changeAuditLogPage(d){ auditLogPage=Math.max(0,auditLogPage+d); _fetchAuditLogs(); }
+
+function logLevelColor(l){ return l==='ERROR'?'text-red-400':l==='WARN'?'text-yellow-400':'text-green-400'; }
+function logRowBg(l){ return l==='ERROR'?'bg-red-950/20':l==='WARN'?'bg-yellow-950/10':''; }
+function logRow(l){
+  return `<tr class="border-t border-gray-800 hover:bg-gray-800/30 cursor-pointer ${logRowBg(l.level)}"
+      onclick="this.nextElementSibling.classList.toggle('hidden')">
+    <td class="px-3 py-2 text-gray-500 whitespace-nowrap text-xs">${toIST(l.created_at)}</td>
+    <td class="px-3 py-2 font-bold ${logLevelColor(l.level)}">${l.level}</td>
+    <td class="px-3 py-2 text-gray-400">${escHtml(l.category)}</td>
+    <td class="px-3 py-2 text-blue-400 text-xs">${escHtml(l.task_name||'')}</td>
+    <td class="px-3 py-2 text-gray-300">${escHtml(l.message)}</td>
+  </tr>
+  <tr class="hidden border-t border-gray-900 bg-gray-900/40">
+    <td colspan="5" class="px-4 pb-2">
+      <pre class="text-xs text-gray-500 rounded p-2 mt-1" style="background:#0a0e14">${escHtml(l.detail||'(no detail)')}</pre>
+    </td>
+  </tr>`;
+}
+
+function downloadLogs(fmt){
+  window.open(API.logsDownloadUrl(document.getElementById('dlRange').value, document.getElementById('dlCategory').value, fmt),'_blank');
+}
+
+async function loadArchives(){
+  const data=await API.logArchives().catch(()=>({archives:[]}));
+  const list=document.getElementById('archivesList');
+  if(!data.archives.length){ list.textContent='No archives yet. Generated daily at 23:58 IST.'; return; }
+  list.innerHTML=data.archives.map(a=>`
+    <div class="flex items-center gap-3 py-1 border-b border-gray-800 last:border-0">
+      <span class="text-gray-400 w-24">${escHtml(a.archive_date)}</span>
+      <span class="text-gray-500 w-24">${escHtml(a.category)}</span>
+      <span class="font-mono text-gray-400 flex-1 truncate">${escHtml(a.filename)}</span>
+      <span class="text-gray-600">${Math.round((a.size_bytes||0)/1024)}KB</span>
+      <a href="${API.base()}/api/logs/archives/${a.id}/download" class="text-blue-400 hover:text-blue-300" target="_blank">↓</a>
+    </div>`).join('');
+}
+
+// ── Settings ────────────────────────────────────────────────────────────────────
+async function loadHealth(){
+  try{
+    const h=await API.health();
+    document.getElementById('healthInfo').innerHTML=`
+      <div>Monitor Host: <b class="text-white">${h.monitorHost}</b></div>
+      <div>Timezone: <b class="text-white">${h.timezone||'Asia/Kolkata (IST)'}</b></div>
+      <div>Active Tasks: <b class="text-white">${h.activeTasks}</b>
+        <span class="${h.faultTasks>0?'text-red-400':'text-gray-600'}">(${h.faultTasks} FAULT)</span></div>
+      <div>Open Incidents: <b class="${h.openIncidents>0?'text-red-400':'text-green-400'}">${h.openIncidents}</b></div>
+      <div>DB Size: <b class="text-white">${h.dbSizeKb} KB</b></div>
+      <div>Uptime: <b class="text-white">${Math.floor(h.uptime/60)}m ${h.uptime%60}s</b></div>
+      <div class="pt-2 border-t border-gray-700 mt-2 space-y-1">
+        <div>Mail Binary: <b class="${h.mail?.binaryOk?'text-green-400':'text-red-400'}">${h.mail?.binaryOk?'✔':'✗'} ${h.mail?.binary||'—'}</b></div>
+        <div>Postfix: <b class="${h.mail?.postfix==='running'?'text-green-400':'text-yellow-400'}">${h.mail?.postfix||'—'}</b>
+          <span class="text-gray-600 text-xs ml-1">relay → ${h.mail?.relayHost}</span></div>
+      </div>
+      <div class="pt-2 border-t border-gray-700 mt-2 text-xs space-y-1">
+        <div>Archive Dir: <b class="${h.logs?.archiveDirOk?'text-green-400':'text-red-400'}">${h.logs?.archiveDirOk?'✔ ':'✗ '}${escHtml(h.logs?.archiveDir||'—')}</b></div>
+        <div>Log Retention: <b class="text-white">${h.logs?.retentionDays||15} days</b></div>
+      </div>`;
+  }catch{ document.getElementById('healthInfo').textContent='Failed to load health info'; }
+}
+
+async function sendTestMail(){
+  const to=document.getElementById('testEmailAddr').value.trim();
+  const res=document.getElementById('testMailResult');
+  if(!to){ res.innerHTML='<span class="text-red-400">Enter a recipient email</span>'; return; }
+  res.innerHTML='<span class="text-gray-400">Sending…</span>';
+  try{
+    await API.testMail(to);
+    res.innerHTML=`<span class="text-green-400">✔ Test mail sent to ${escHtml(to)}</span>`;
+  }catch(e){ res.innerHTML=`<span class="text-red-400">Failed: ${escHtml(e.message)}</span>`; }
+}
+
+// ── Modal backdrops + Escape ────────────────────────────────────────────────────
+['taskModal','detailModal'].forEach(id=>{
+  document.getElementById(id).addEventListener('click',e=>{
+    if(e.target===document.getElementById(id)) document.getElementById(id).classList.add('hidden');
   });
 });
-document.addEventListener('keydown', e => {
-  if (e.key === 'Escape') {
-    closeTaskModal();
-    closeDetailModal();
-    closeHostMapModal();
-  }
+document.addEventListener('keydown',e=>{
+  if(e.key==='Escape'){ closeTaskModal(); closeDetailModal(); }
 });
 
-// ── Init ──────────────────────────────────────────────────────────────────────
+// ── Init ───────────────────────────────────────────────────────────────────────
 loadTasks();
-setInterval(loadTasks, 30000);
+setInterval(loadTasks,30000);
 </script>
 </body>
 </html>
