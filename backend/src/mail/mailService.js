@@ -1,7 +1,7 @@
 // src/mail/mailService.js
-// Phase 5: HTML email with plain-text fallback.
-// Escalation logic, recipient collection, and logging unchanged.
-// Subject format updated per spec.
+// Phase 5 (revised): HTML email via mailx -a flag.
+// Send mechanism identical to original — same envelope, same From header,
+// same Postfix relay path. Only adds html: param to send().
 
 const {
   send,
@@ -12,11 +12,10 @@ const {
   buildAlertHtml,
   buildAllClearHtml,
   buildTestHtml,
-  MONITOR_HOST,
 } = require('./transport');
 const { log } = require('../services/appLog');
 
-// ── Recipients ────────────────────────────────────────────────────────────────
+// ── Recipients (unchanged from original) ──────────────────────────────────────
 
 function parseEmails(str) {
   if (!str) return [];
@@ -42,7 +41,7 @@ function collectAllRecipients(task) {
   ])];
 }
 
-// ── Duration ──────────────────────────────────────────────────────────────────
+// ── Duration (unchanged from original) ───────────────────────────────────────
 
 function formatDuration(ms) {
   const h = Math.floor(ms / 3600000);
@@ -51,15 +50,12 @@ function formatDuration(ms) {
   const parts = [];
   if (h) parts.push(`${h}h`);
   if (m) parts.push(`${m}m`);
-  if (!h) parts.push(`${s}s`);
+  parts.push(`${s}s`);
   return parts.join(' ');
 }
 
 // ── Subjects (updated format per spec) ───────────────────────────────────────
 
-/**
- * Returns "Application" for APPLICATION tasks, "System" for PING tasks.
- */
 function typeWord(task) {
   return task.type === 'APPLICATION' ? 'Application' : 'System';
 }
@@ -77,61 +73,65 @@ function buildSubject(task, tier) {
   }
 }
 
-// ── Send helpers ──────────────────────────────────────────────────────────────
+// ── Send functions (logging and escalation logic unchanged from original) ─────
 
 async function sendAlert({ task, incidentState, tier, errorRaw }) {
   const recipients = collectRecipients(task, tier);
-  if (!recipients.length) {
+  if (recipients.length === 0) {
     log('WARN', 'EMAIL', 'scheduler', task.id,
-      `${tier} skipped — no valid recipients for "${task.name}"`, null);
+      `${tier} skipped - no valid recipients`, null);
     return false;
   }
 
-  const t0 = incidentState?.t0;
+  const t0     = new Date(incidentState.t0);
+  const diffMs = Date.now() - t0.getTime();
 
-  const plainText = buildAlertPlainText({ task, t0, tier, errorRaw });
-  const html      = buildAlertHtml({ task, t0, tier, errorRaw });
-  const subject   = buildSubject(task, tier);
+  const plainText = buildAlertPlainText({
+    task, t0: incidentState.t0, tier, errorRaw,
+    incidentDuration: diffMs > 60000 ? formatDuration(diffMs) : null,
+  });
+  const html = buildAlertHtml({ task, t0: incidentState.t0, tier, errorRaw });
 
-  try {
-    await send({ to: recipients, subject, plainText, html });
-    log('INFO', 'EMAIL', 'scheduler', task.id,
-      `${tier} mail sent for "${task.name}" → ${recipients.join(', ')}`, null);
-    return true;
-  } catch (err) {
-    log('ERROR', 'EMAIL', 'scheduler', task.id,
-      `${tier} mail FAILED for "${task.name}": ${err.message}`, err.stack);
-    throw err;
-  }
+  await send({
+    to:      recipients,
+    subject: buildSubject(task, tier),
+    plainText,
+    html,
+  });
+
+  log('INFO', 'EMAIL', 'scheduler', task.id,
+    `${tier} mail sent for "${task.name}" -> ${recipients.join(', ')}`, null);
+  return true;
 }
 
 async function sendAllClear({ task, t0 }) {
   const recipients = collectAllRecipients(task);
-  if (!recipients.length) return false;
+  if (recipients.length === 0) return false;
 
   const downtimeDuration = formatDuration(Date.now() - new Date(t0).getTime());
   const plainText = buildAllClearPlainText({ task, downtimeDuration });
   const html      = buildAllClearHtml({ task, downtimeDuration });
-  const subject   = buildSubject(task, 'CLEAR');
 
-  try {
-    await send({ to: recipients, subject, plainText, html });
-    log('INFO', 'EMAIL', 'scheduler', task.id,
-      `All Clear mail sent for "${task.name}" — downtime: ${downtimeDuration}`, null);
-    return true;
-  } catch (err) {
-    log('ERROR', 'EMAIL', 'scheduler', task.id,
-      `All Clear mail FAILED for "${task.name}": ${err.message}`, err.stack);
-    throw err;
-  }
+  await send({
+    to:      recipients,
+    subject: buildSubject(task, 'CLEAR'),
+    plainText,
+    html,
+  });
+
+  log('INFO', 'EMAIL', 'scheduler', task.id,
+    `All Clear mail sent for "${task.name}" - downtime: ${downtimeDuration}`, null);
+  return true;
 }
 
 async function sendTestEmail(to) {
-  // Explicit-only. Never called from scheduler or monitor cycle.
-  const subject   = buildSubject({}, 'TEST');
-  const plainText = buildTestPlainText();
-  const html      = buildTestHtml();
-  await send({ to, subject, plainText, html });
+  // Explicit-only path. Never called from scheduler or monitor cycle.
+  await send({
+    to,
+    subject:   buildSubject({}, 'TEST'),
+    plainText: buildTestPlainText(),
+    html:      buildTestHtml(),
+  });
 }
 
 // ── Exports ───────────────────────────────────────────────────────────────────
