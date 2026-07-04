@@ -1,7 +1,7 @@
 // src/mail/mailService.js
-// Single entry point for all outbound mail in NetWatch.
-// Uses transport.js, which intentionally mirrors scripts/3_run.sh option 6.
-// No scheduler sends test email; test email is sent only by /api/logs/test-email.
+// Phase 5: HTML email with plain-text fallback.
+// Escalation logic, recipient collection, and logging unchanged.
+// Subject format updated per spec.
 
 const {
   send,
@@ -9,8 +9,14 @@ const {
   buildAlertPlainText,
   buildAllClearPlainText,
   buildTestPlainText,
+  buildAlertHtml,
+  buildAllClearHtml,
+  buildTestHtml,
+  MONITOR_HOST,
 } = require('./transport');
 const { log } = require('../services/appLog');
+
+// ── Recipients ────────────────────────────────────────────────────────────────
 
 function parseEmails(str) {
   if (!str) return [];
@@ -36,6 +42,8 @@ function collectAllRecipients(task) {
   ])];
 }
 
+// ── Duration ──────────────────────────────────────────────────────────────────
+
 function formatDuration(ms) {
   const h = Math.floor(ms / 3600000);
   const m = Math.floor((ms % 3600000) / 60000);
@@ -43,64 +51,90 @@ function formatDuration(ms) {
   const parts = [];
   if (h) parts.push(`${h}h`);
   if (m) parts.push(`${m}m`);
-  parts.push(`${s}s`);
+  if (!h) parts.push(`${s}s`);
   return parts.join(' ');
 }
 
-const SUBJECTS = {
-  L1:    n => `[NETWATCH ALERT] ${n} - DOWN (Level 1)`,
-  L2:    n => `[NETWATCH ESCALATION] ${n} - Still DOWN 48h+ (Level 2)`,
-  L3:    n => `[NETWATCH CRITICAL] ${n} - Still DOWN, repeated 48h escalation (Level 3)`,
-  CLEAR: n => `[NETWATCH ALL CLEAR] ${n} - Recovered`,
-  TEST:  () => '[NETWATCH] Mail Test',
-};
+// ── Subjects (updated format per spec) ───────────────────────────────────────
+
+/**
+ * Returns "Application" for APPLICATION tasks, "System" for PING tasks.
+ */
+function typeWord(task) {
+  return task.type === 'APPLICATION' ? 'Application' : 'System';
+}
+
+function buildSubject(task, tier) {
+  const n = task.name;
+  const t = typeWord(task);
+  switch (tier) {
+    case 'L1':    return `[NETWATCH L1] ${n} ${t} is DOWN`;
+    case 'L2':    return `[NETWATCH L2] ${n} ${t} still DOWN for 48h`;
+    case 'L3':    return `[NETWATCH L3] ${n} ${t} still DOWN - repeated escalation`;
+    case 'CLEAR': return `[NETWATCH CLEAR] ${n} ${t} recovered`;
+    case 'TEST':  return '[NETWATCH TEST] Mail configuration OK';
+    default:      return `[NETWATCH] ${n} - ${tier}`;
+  }
+}
+
+// ── Send helpers ──────────────────────────────────────────────────────────────
 
 async function sendAlert({ task, incidentState, tier, errorRaw }) {
   const recipients = collectRecipients(task, tier);
-  if (recipients.length === 0) {
-    log('WARN', 'EMAIL', 'scheduler', task.id, `${tier} skipped - no valid recipients`, null);
+  if (!recipients.length) {
+    log('WARN', 'EMAIL', 'scheduler', task.id,
+      `${tier} skipped — no valid recipients for "${task.name}"`, null);
     return false;
   }
 
-  const t0 = new Date(incidentState.t0);
-  const diffMs = Date.now() - t0.getTime();
-  const plainText = buildAlertPlainText({
-    task,
-    t0: incidentState.t0,
-    tier,
-    errorRaw,
-    incidentDuration: diffMs > 60000 ? formatDuration(diffMs) : null,
-  });
+  const t0 = incidentState?.t0;
 
-  await send({ to: recipients, subject: SUBJECTS[tier](task.name), plainText });
-  log('INFO', 'EMAIL', 'scheduler', task.id,
-    `${tier} mail sent for "${task.name}" -> ${recipients.join(', ')}`, null);
-  return true;
+  const plainText = buildAlertPlainText({ task, t0, tier, errorRaw });
+  const html      = buildAlertHtml({ task, t0, tier, errorRaw });
+  const subject   = buildSubject(task, tier);
+
+  try {
+    await send({ to: recipients, subject, plainText, html });
+    log('INFO', 'EMAIL', 'scheduler', task.id,
+      `${tier} mail sent for "${task.name}" → ${recipients.join(', ')}`, null);
+    return true;
+  } catch (err) {
+    log('ERROR', 'EMAIL', 'scheduler', task.id,
+      `${tier} mail FAILED for "${task.name}": ${err.message}`, err.stack);
+    throw err;
+  }
 }
 
 async function sendAllClear({ task, t0 }) {
   const recipients = collectAllRecipients(task);
-  if (recipients.length === 0) return false;
+  if (!recipients.length) return false;
 
   const downtimeDuration = formatDuration(Date.now() - new Date(t0).getTime());
-  await send({
-    to: recipients,
-    subject: SUBJECTS.CLEAR(task.name),
-    plainText: buildAllClearPlainText({ task, downtimeDuration }),
-  });
-  log('INFO', 'EMAIL', 'scheduler', task.id,
-    `All Clear mail sent for "${task.name}" - downtime: ${downtimeDuration}`, null);
-  return true;
+  const plainText = buildAllClearPlainText({ task, downtimeDuration });
+  const html      = buildAllClearHtml({ task, downtimeDuration });
+  const subject   = buildSubject(task, 'CLEAR');
+
+  try {
+    await send({ to: recipients, subject, plainText, html });
+    log('INFO', 'EMAIL', 'scheduler', task.id,
+      `All Clear mail sent for "${task.name}" — downtime: ${downtimeDuration}`, null);
+    return true;
+  } catch (err) {
+    log('ERROR', 'EMAIL', 'scheduler', task.id,
+      `All Clear mail FAILED for "${task.name}": ${err.message}`, err.stack);
+    throw err;
+  }
 }
 
 async function sendTestEmail(to) {
-  // Explicit-only path. Do not call from any scheduler, monitor cycle, retry loop, or startup hook.
-  await send({
-    to,
-    subject: SUBJECTS.TEST(),
-    plainText: buildTestPlainText(),
-  });
+  // Explicit-only. Never called from scheduler or monitor cycle.
+  const subject   = buildSubject({}, 'TEST');
+  const plainText = buildTestPlainText();
+  const html      = buildTestHtml();
+  await send({ to, subject, plainText, html });
 }
+
+// ── Exports ───────────────────────────────────────────────────────────────────
 
 module.exports = {
   sendAlert,
