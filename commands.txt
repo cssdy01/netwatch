@@ -26,3 +26,7 @@ chmod +x backend/docker/*.sh
 
 
 git pull origin main
+
+docker build --no-cache -t netwatch-backend ./backend
+
+docker build --no-cache -t netwatch-frontend ./frontend

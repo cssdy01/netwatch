@@ -19,7 +19,7 @@ BOLD='\033[1m'; NC='\033[0m'
 MONITOR_HOST=$(hostname -I | awk '{print $1}')   # auto-detects your server IP
                                                    # or set manually: "192.168.11.22"
 BACKEND_PORT=3000
-FRONTEND_PORT=80
+FRONTEND_PORT=8888
 
 ADMIN_USER="admin"
 ADMIN_PASS="admin123"
