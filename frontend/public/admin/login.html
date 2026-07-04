@@ -12,7 +12,8 @@
     <div class="rounded-xl border border-gray-700 p-8" style="background:#161b22">
       <div class="text-center mb-8">
         <div class="text-3xl mb-2">🔒</div>
-        <div class="text-gray-500 text-sm">Secure Access</div>
+        <div class="font-bold text-lg">NetWatch Admin</div>
+        <div class="text-gray-500 text-sm mt-1">Secure Access</div>
       </div>
       <div id="errMsg" class="hidden mb-4 px-3 py-2 rounded-lg text-sm bg-red-950 text-red-300 border border-red-800"></div>
       <div class="space-y-4">
@@ -41,6 +42,9 @@
     // Auto-redirect if already logged in
     API.me().then(() => { window.location = '/admin/dashboard.html'; }).catch(() => {});
 
+    document.getElementById('user').addEventListener('keydown', e => {
+      if (e.key === 'Enter') document.getElementById('pass').focus();
+    });
     document.getElementById('pass').addEventListener('keydown', e => {
       if (e.key === 'Enter') doLogin();
     });
