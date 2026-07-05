@@ -284,9 +284,9 @@ function renderCandles(t) {
   }
   
   let bars = [];
-  let results = Array(10).fill('PASS'); // Default to PASS
+  let results = Array(10).fill('UNKNOWN'); 
   
-  // 1. If backend provides actual check history (e.g., after loading detail)
+  // 1. If backend provides actual check history (e.g., after loading detail or if included in summary)
   if (t.checks && Array.isArray(t.checks) && t.checks.length > 0) {
     let recent = t.checks.slice(0, 10).reverse();
     let padLength = 10 - recent.length;
@@ -302,29 +302,21 @@ function renderCandles(t) {
       recent.map(val => val === null ? 'FAIL' : 'PASS')
     );
   }
-  // 3. Fallback for Summary View: Estimate red candles based on incident duration
-  else if (t.status === 'FAULT') {
-    let failCount = 1; // Default to at least 1 recent fail
-    
-    if (t.incident_duration) {
-      // Extract minutes and hours from strings like "3m", "1h 2m"
-      let matchMin = t.incident_duration.match(/(\d+)m/);
-      let matchHour = t.incident_duration.match(/(\d+)h/);
-      let mins = (matchHour ? parseInt(matchHour[1], 10) * 60 : 0) + 
-                 (matchMin ? parseInt(matchMin[1], 10) : 0);
-                 
-      // Assuming ~1 check per minute. If down for 'mins', approx (mins + 1) checks failed.
-      failCount = Math.max(1, Math.min(10, mins + 1));
-    }
-    
-    // Fill the rightmost `failCount` candles with FAIL
-    for (let i = 0; i < 10; i++) {
-      results[i] = i >= (10 - failCount) ? 'FAIL' : 'PASS';
+  // 3. Fallback: No history data available in summary view.
+  // Instead of guessing based on time, we just show what we know for sure.
+  else {
+    if (t.status === 'OK') {
+      // If OK, assume stable passing
+      results = Array(10).fill('PASS');
+    } else {
+      // If FAULT, we only know the current state is broken, the rest is unknown to the dashboard
+      results = Array(9).fill('UNKNOWN');
+      results.push('FAIL');
     }
   }
   
   for (let i = 0; i < 10; i++) {
-    let colorClass = results[i] === 'FAIL' ? 'bg-orange-500' : (results[i] === 'UNKNOWN' ? 'bg-gray-100' : 'bg-gray-200');
+    let colorClass = results[i] === 'FAIL' ? 'bg-[#f97316]' : (results[i] === 'PASS' ? 'bg-gray-300' : 'bg-gray-100');
     bars.push(`<div class="w-1.5 h-4 ${colorClass} rounded-sm transition-colors duration-300"></div>`);
   }
   
