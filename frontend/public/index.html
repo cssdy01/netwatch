@@ -276,18 +276,31 @@ function escHtml(s) {
   return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 }
 
-function renderCandles(status, isInactive) {
-  if (isInactive) {
+function renderCandles(t) {
+  if (!t.is_active) {
     return `<div class="flex items-center gap-[3px] mt-1 opacity-40">
       ${Array(10).fill(`<div class="w-1.5 h-4 bg-gray-200 rounded-sm"></div>`).join('')}
     </div>`;
   }
   
   let bars = [];
+  let results = Array(10).fill('PASS'); // Default to PASS if no history available
+  
+  // If we have check history, map it to the candles (oldest on left, newest on right)
+  if (t.checks && Array.isArray(t.checks) && t.checks.length > 0) {
+    let recent = t.checks.slice(0, 10).reverse();
+    let padLength = 10 - recent.length;
+    // Pad missing data with 'UNKNOWN', then append actual results
+    results = Array(padLength).fill('UNKNOWN').concat(
+      recent.map(c => c.result === 'FAIL' ? 'FAIL' : 'PASS')
+    );
+  } else if (t.status === 'FAULT') {
+    // Fallback if summary doesn't load checks array
+    results[9] = 'FAIL';
+  }
+  
   for (let i = 0; i < 10; i++) {
-    // Make recent bars orange if there's a fault, otherwise gray. All same height.
-    let isAlert = (status === 'FAULT') && (i >= 7);
-    let colorClass = isAlert ? 'bg-orange-500' : 'bg-gray-200';
+    let colorClass = results[i] === 'FAIL' ? 'bg-orange-500' : (results[i] === 'UNKNOWN' ? 'bg-gray-100' : 'bg-gray-200');
     bars.push(`<div class="w-1.5 h-4 ${colorClass} rounded-sm"></div>`);
   }
   
@@ -336,7 +349,7 @@ function renderCard(t) {
             <span class="text-lg font-mono font-bold ${isFault ? 'text-orange-600' : 'text-gray-900'}">${t.last_response_ms != null ? t.last_response_ms : 'ERR'}</span>
             <span class="text-xs text-gray-500 ${t.last_response_ms != null ? '' : 'hidden'}">ms</span>
           </div>
-          ${renderCandles(t.status, isInactive)}
+          ${renderCandles(t)}
         </div>
       </div>
     </div>`;
