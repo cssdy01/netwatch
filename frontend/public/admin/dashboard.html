@@ -4,103 +4,161 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>NetWatch — Admin Dashboard</title>
+  
   <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  
   <style>
-    body{background:#0d1117;color:#f0f6fc;}
-    .modal-bg{background:rgba(0,0,0,.85);backdrop-filter:blur(4px);}
-    pre{white-space:pre-wrap;word-break:break-all;}
-    ::-webkit-scrollbar{width:6px;}::-webkit-scrollbar-thumb{background:#30363d;border-radius:3px;}
-    .tab-active  {border-bottom:2px solid #3b82f6;color:#f0f6fc;}
-    .tab-inactive{color:#6e7681;border-bottom:2px solid transparent;}
-    .stab-active  {background:#1f2937;color:#f0f6fc;border-radius:.375rem;}
-    .stab-inactive{color:#6e7681;}
-    .inp{background:#0d1117;border:1px solid #374151;border-radius:.5rem;color:#f0f6fc;padding:.5rem .75rem;font-size:.875rem;width:100%;}
-    .inp:focus{outline:none;border-color:#3b82f6;}
-    .si{background:#0d1117;border:1px solid #374151;border-radius:.5rem;color:#f0f6fc;padding:.375rem .75rem;font-size:.8rem;}
-    .si:focus{outline:none;border-color:#3b82f6;}
-    .badge-ok   {background:#14532d;color:#86efac;}
-    .badge-fault{background:#450a0a;color:#fca5a5;}
-    .badge-pause{background:#1f2937;color:#6b7280;}
-    .hm-box{background:#0a1628;border:1px solid #1e3a5f;border-radius:.5rem;padding:.75rem;margin-top:.5rem;}
+    body { 
+      background: #f8fafc; 
+      color: #0f172a; 
+      font-family: 'Plus Jakarta Sans', sans-serif;
+    }
+    
+    .font-mono { font-family: 'JetBrains Mono', monospace; }
+    
+    .modal-bg { background: rgba(17, 24, 39, 0.65); backdrop-filter: blur(4px); }
+    pre { white-space: pre-wrap; word-break: break-all; }
+    
+    /* Scrollbar */
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: #9ca3af; }
+    
+    /* Tab Styling */
+    .tab-active { color: #f97316; border-bottom: 2px solid #f97316; font-weight: 600; }
+    .tab-inactive { color: #6b7280; border-bottom: 2px solid transparent; font-weight: 500; transition: color 0.2s; }
+    .tab-inactive:hover { color: #374151; }
+    
+    /* Sub-Tab Styling */
+    .stab-active { background: #fff7ed; color: #c2410c; border: 1px solid #fed7aa; border-radius: 0.5rem; font-weight: 600; box-shadow: 0 1px 2px rgba(0,0,0,0.05); }
+    .stab-inactive { background: #ffffff; color: #6b7280; border: 1px solid #e5e7eb; border-radius: 0.5rem; transition: all 0.2s; }
+    .stab-inactive:hover { background: #f9fafb; color: #374151; }
+    
+    /* Inputs */
+    .inp, .si { 
+      background: #ffffff; 
+      border: 1px solid #d1d5db; 
+      border-radius: 0.5rem; 
+      color: #111827; 
+      padding: 0.5rem 0.75rem; 
+      font-size: 0.875rem; 
+      width: 100%; 
+      transition: all 0.2s;
+    }
+    .inp:focus, .si:focus { 
+      outline: none; 
+      border-color: #f97316; 
+      box-shadow: 0 0 0 3px rgba(249, 115, 22, 0.15); 
+    }
+    .si { padding: 0.4rem 0.8rem; font-size: 0.85rem; }
+    
+    /* Badges */
+    .badge-ok { background: #f0fdf4; color: #15803d; border: 1px solid #bbf7d0; }
+    .badge-fault { background: #fef2f2; color: #b91c1c; border: 1px solid #fecaca; }
+    .badge-pause { background: #f3f4f6; color: #6b7280; border: 1px solid #e5e7eb; }
+    
+    /* Highlight/Containers */
+    .hm-box { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 0.5rem; padding: 0.75rem; margin-top: 0.5rem; }
+    
+    /* Subtle Orange Pulse for Alerts */
+    .pulse-orange { animation: pulseOrange 2s infinite; }
+    @keyframes pulseOrange {
+      0% { box-shadow: 0 0 0 0 rgba(249, 115, 22, 0.4); border-color: rgba(249, 115, 22, 0.6); }
+      70% { box-shadow: 0 0 0 6px rgba(249, 115, 22, 0); border-color: rgba(249, 115, 22, 0.2); }
+      100% { box-shadow: 0 0 0 0 rgba(249, 115, 22, 0); border-color: #fecaca; }
+    }
   </style>
 </head>
 <body class="min-h-screen flex flex-col">
 
-<header class="border-b border-gray-800 px-6 py-3 flex items-center justify-between sticky top-0 z-20" style="background:#161b22;">
+<header class="bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between sticky top-0 z-20 shadow-sm">
   <div class="flex items-center gap-4">
-    <span class="font-bold text-base">⚙ NetWatch Admin</span>
-    <a href="/" class="text-xs text-gray-500 hover:text-gray-300">View Dashboard →</a>
+    <!-- Brand Logo -->
+    <img src="/images/TSAROLABS_updated_logo.png" alt="TSARO Labs" class="h-7 object-contain" onerror="this.style.display='none'">
+    
+    <div class="h-5 w-px bg-gray-300 mx-1 hidden sm:block"></div> <!-- Divider -->
+    
+    <span class="font-bold text-lg text-gray-900 tracking-tight">NetWatch Admin</span>
+    <a href="/" class="text-xs font-medium text-gray-500 hover:text-orange-500 transition-colors bg-gray-50 px-2.5 py-1.5 rounded-md border border-gray-200 ml-2 hidden sm:block">Monitor Dashboard &rarr;</a>
   </div>
-  <div class="flex items-center gap-4">
-    <span id="istClockAdmin" class="text-xs text-gray-600 font-mono"></span>
-    <span id="userLabel" class="text-xs text-gray-500"></span>
-    <button onclick="doLogout()" class="text-xs text-gray-500 hover:text-red-400 transition">Logout</button>
+  <div class="flex items-center gap-5">
+    <span id="istClockAdmin" class="text-xs text-gray-500 font-mono bg-gray-50 px-2 py-1 rounded-md border border-gray-200 hidden md:block"></span>
+    <span id="userLabel" class="text-sm font-medium text-gray-700 flex items-center gap-1.5">
+      <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>
+    </span>
+    <button onclick="doLogout()" class="text-sm font-medium text-gray-500 hover:text-red-500 transition-colors">Logout</button>
   </div>
 </header>
 
-<!-- Main tabs (Host Mappings tab removed) -->
-<div class="px-6 flex gap-0 border-b border-gray-800 overflow-x-auto" style="background:#161b22;">
-  <button class="px-4 py-3 text-sm font-medium tab-active  whitespace-nowrap" onclick="setTab('tasks',this)">Tasks</button>
-  <button class="px-4 py-3 text-sm font-medium tab-inactive whitespace-nowrap" onclick="setTab('bin',this)">Recycle Bin</button>
-  <button class="px-4 py-3 text-sm font-medium tab-inactive whitespace-nowrap" onclick="setTab('backup',this)">Backup</button>
-  <button class="px-4 py-3 text-sm font-medium tab-inactive whitespace-nowrap" onclick="setTab('logs',this)">Logs</button>
-  <button class="px-4 py-3 text-sm font-medium tab-inactive whitespace-nowrap" onclick="setTab('settings',this)">Settings</button>
+<!-- Main tabs -->
+<div class="px-6 flex gap-2 border-b border-gray-200 bg-white overflow-x-auto shadow-sm relative z-10">
+  <button class="px-5 py-3.5 text-sm tab-active whitespace-nowrap" onclick="setTab('tasks',this)">Monitored Tasks</button>
+  <button class="px-5 py-3.5 text-sm tab-inactive whitespace-nowrap" onclick="setTab('bin',this)">Recycle Bin</button>
+  <button class="px-5 py-3.5 text-sm tab-inactive whitespace-nowrap" onclick="setTab('backup',this)">Backup & Restore</button>
+  <button class="px-5 py-3.5 text-sm tab-inactive whitespace-nowrap" onclick="setTab('logs',this)">System Logs</button>
+  <button class="px-5 py-3.5 text-sm tab-inactive whitespace-nowrap" onclick="setTab('settings',this)">Settings & Health</button>
 </div>
 
-<main class="flex-1 p-6 space-y-4">
+<main class="flex-1 p-6 space-y-6 max-w-[1600px] mx-auto w-full">
 
 <!-- ══ TASKS ══ -->
 <div id="tab-tasks">
-  <div class="flex items-center justify-between mb-4">
-    <h2 class="font-semibold text-lg">Monitored Tasks</h2>
+  <div class="flex flex-wrap items-center justify-between mb-5 gap-4">
+    <h2 class="font-bold text-xl text-gray-900 tracking-tight">Task Management</h2>
     <button onclick="openTaskModal(null)"
-      class="px-4 py-2 rounded-lg text-sm font-medium bg-blue-600 hover:bg-blue-500 transition">+ Add Task</button>
+      class="px-5 py-2.5 rounded-xl text-sm font-bold bg-orange-500 hover:bg-orange-600 text-white shadow-md shadow-orange-500/20 transition-all active:scale-95 flex items-center gap-2">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"></path></svg>
+      Add Task
+    </button>
   </div>
 
-  <div class="flex gap-1 mb-4 p-1 rounded-lg w-fit" style="background:#0d1117;">
-    <button id="stab-ping" class="stab-active  px-4 py-2 text-sm font-medium transition" onclick="setTaskSubTab('ping',this)">🖥 Ping Tasks</button>
-    <button id="stab-app"  class="stab-inactive px-4 py-2 text-sm font-medium transition" onclick="setTaskSubTab('app',this)">🌐 Application Tasks</button>
+  <div class="flex gap-2 mb-5">
+    <button id="stab-ping" class="stab-active px-4 py-2.5 text-sm transition-all" onclick="setTaskSubTab('ping',this)">🖥 Ping Tasks</button>
+    <button id="stab-app"  class="stab-inactive px-4 py-2.5 text-sm transition-all" onclick="setTaskSubTab('app',this)">🌐 Application Tasks</button>
   </div>
 
   <div id="tasks-ping">
-    <div class="flex items-center gap-3 mb-3">
-      <input id="searchPingAdmin" type="search" placeholder="Search ping tasks…" class="si" oninput="renderTasks()">
-      <span id="pingTaskCount" class="text-xs text-gray-600"></span>
+    <div class="flex flex-wrap items-center gap-3 mb-4">
+      <input id="searchPingAdmin" type="search" placeholder="Search ping tasks…" class="search-input w-64 si" oninput="renderTasks()">
+      <span id="pingTaskCount" class="text-xs font-medium text-gray-500 bg-white px-2 py-1 rounded-md border border-gray-200 shadow-sm"></span>
     </div>
-    <div class="rounded-xl border border-gray-700 overflow-hidden" style="background:#161b22;">
-      <table class="w-full text-sm">
-        <thead class="text-xs uppercase text-gray-500 border-b border-gray-700">
-          <tr style="background:#0d1117;">
-            <th class="text-left px-4 py-3">Name</th><th class="text-left px-4 py-3">Target</th>
-            <th class="text-left px-4 py-3">OS</th><th class="text-left px-4 py-3">Int</th>
-            <th class="text-left px-4 py-3">N</th><th class="text-left px-4 py-3">Status</th>
-            <th class="text-left px-4 py-3">Active</th><th class="text-left px-4 py-3">Email</th>
-            <th class="text-left px-4 py-3">Last Check (IST)</th><th class="px-4 py-3">Actions</th>
+    <div class="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm">
+      <table class="w-full text-sm text-left">
+        <thead class="text-[11px] font-bold uppercase tracking-wider text-gray-500 border-b border-gray-200 bg-gray-50">
+          <tr>
+            <th class="px-5 py-3.5">Name</th><th class="px-5 py-3.5">Target</th>
+            <th class="px-5 py-3.5">OS</th><th class="px-5 py-3.5">Int</th>
+            <th class="px-5 py-3.5">N</th><th class="px-5 py-3.5">Status</th>
+            <th class="px-5 py-3.5">Active</th><th class="px-5 py-3.5">Email</th>
+            <th class="px-5 py-3.5">Last Check (IST)</th><th class="px-5 py-3.5 text-right">Actions</th>
           </tr>
         </thead>
-        <tbody id="pingTasksBody"><tr><td colspan="10" class="px-4 py-8 text-center text-gray-600">Loading…</td></tr></tbody>
+        <tbody id="pingTasksBody" class="divide-y divide-gray-100"><tr><td colspan="10" class="px-5 py-10 text-center text-gray-500">Loading…</td></tr></tbody>
       </table>
     </div>
   </div>
 
   <div id="tasks-app" class="hidden">
-    <div class="flex items-center gap-3 mb-3">
-      <input id="searchAppAdmin" type="search" placeholder="Search application tasks…" class="si" oninput="renderTasks()">
-      <span id="appTaskCount" class="text-xs text-gray-600"></span>
+    <div class="flex flex-wrap items-center gap-3 mb-4">
+      <input id="searchAppAdmin" type="search" placeholder="Search application tasks…" class="search-input w-64 si" oninput="renderTasks()">
+      <span id="appTaskCount" class="text-xs font-medium text-gray-500 bg-white px-2 py-1 rounded-md border border-gray-200 shadow-sm"></span>
     </div>
-    <div class="rounded-xl border border-gray-700 overflow-hidden" style="background:#161b22;">
-      <table class="w-full text-sm">
-        <thead class="text-xs uppercase text-gray-500 border-b border-gray-700">
-          <tr style="background:#0d1117;">
-            <th class="text-left px-4 py-3">Name</th><th class="text-left px-4 py-3">Server IP</th>
-            <th class="text-left px-4 py-3">URLs</th><th class="text-left px-4 py-3">Host Map</th>
-            <th class="text-left px-4 py-3">Int</th><th class="text-left px-4 py-3">N</th>
-            <th class="text-left px-4 py-3">Status</th><th class="text-left px-4 py-3">Active</th>
-            <th class="text-left px-4 py-3">Email</th><th class="text-left px-4 py-3">Last Check (IST)</th>
-            <th class="px-4 py-3">Actions</th>
+    <div class="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm">
+      <table class="w-full text-sm text-left">
+        <thead class="text-[11px] font-bold uppercase tracking-wider text-gray-500 border-b border-gray-200 bg-gray-50">
+          <tr>
+            <th class="px-5 py-3.5">Name</th><th class="px-5 py-3.5">Server IP</th>
+            <th class="px-5 py-3.5">URLs</th><th class="px-5 py-3.5">Host Map</th>
+            <th class="px-5 py-3.5">Int</th><th class="px-5 py-3.5">N</th>
+            <th class="px-5 py-3.5">Status</th><th class="px-5 py-3.5">Active</th>
+            <th class="px-5 py-3.5">Email</th><th class="px-5 py-3.5">Last Check (IST)</th>
+            <th class="px-5 py-3.5 text-right">Actions</th>
           </tr>
         </thead>
-        <tbody id="appTasksBody"><tr><td colspan="11" class="px-4 py-8 text-center text-gray-600">Loading…</td></tr></tbody>
+        <tbody id="appTasksBody" class="divide-y divide-gray-100"><tr><td colspan="11" class="px-5 py-10 text-center text-gray-500">Loading…</td></tr></tbody>
       </table>
     </div>
   </div>
@@ -108,34 +166,36 @@
 
 <!-- ══ RECYCLE BIN ══ -->
 <div id="tab-bin" class="hidden">
-  <h2 class="font-semibold text-lg mb-4">Recycle Bin</h2>
-  <div class="flex gap-1 mb-4 p-1 rounded-lg w-fit" style="background:#0d1117;">
-    <button id="bstab-ping" class="stab-active  px-4 py-2 text-sm font-medium transition" onclick="setBinSubTab('ping',this)">🖥 Ping</button>
-    <button id="bstab-app"  class="stab-inactive px-4 py-2 text-sm font-medium transition" onclick="setBinSubTab('app',this)">🌐 Application</button>
+  <h2 class="font-bold text-xl text-gray-900 tracking-tight mb-5">Recycle Bin</h2>
+  <div class="flex gap-2 mb-5">
+    <button id="bstab-ping" class="stab-active px-4 py-2.5 text-sm transition-all" onclick="setBinSubTab('ping',this)">🖥 Ping</button>
+    <button id="bstab-app"  class="stab-inactive px-4 py-2.5 text-sm transition-all" onclick="setBinSubTab('app',this)">🌐 Application</button>
   </div>
+  
   <div id="bin-ping">
-    <div class="flex items-center gap-3 mb-3">
-      <input id="searchBinPing" type="search" placeholder="Search deleted ping tasks…" class="si" oninput="renderBin()">
+    <div class="flex items-center gap-3 mb-4">
+      <input id="searchBinPing" type="search" placeholder="Search deleted ping tasks…" class="search-input w-64 si" oninput="renderBin()">
     </div>
-    <div class="rounded-xl border border-gray-700 overflow-hidden" style="background:#161b22;">
-      <table class="w-full text-sm">
-        <thead class="text-xs uppercase text-gray-500 border-b border-gray-700">
-          <tr style="background:#0d1117;"><th class="text-left px-4 py-3">Name</th><th class="text-left px-4 py-3">Target</th><th class="text-left px-4 py-3">Deleted At (IST)</th><th class="px-4 py-3">Actions</th></tr>
+    <div class="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm">
+      <table class="w-full text-sm text-left">
+        <thead class="text-[11px] font-bold uppercase tracking-wider text-gray-500 border-b border-gray-200 bg-gray-50">
+          <tr><th class="px-5 py-3.5">Name</th><th class="px-5 py-3.5">Target</th><th class="px-5 py-3.5">Deleted At (IST)</th><th class="px-5 py-3.5 text-right">Actions</th></tr>
         </thead>
-        <tbody id="binPingBody"><tr><td colspan="4" class="px-4 py-8 text-center text-gray-600">Loading…</td></tr></tbody>
+        <tbody id="binPingBody" class="divide-y divide-gray-100"><tr><td colspan="4" class="px-5 py-10 text-center text-gray-500">Loading…</td></tr></tbody>
       </table>
     </div>
   </div>
+  
   <div id="bin-app" class="hidden">
-    <div class="flex items-center gap-3 mb-3">
-      <input id="searchBinApp" type="search" placeholder="Search deleted application tasks…" class="si" oninput="renderBin()">
+    <div class="flex items-center gap-3 mb-4">
+      <input id="searchBinApp" type="search" placeholder="Search deleted application tasks…" class="search-input w-64 si" oninput="renderBin()">
     </div>
-    <div class="rounded-xl border border-gray-700 overflow-hidden" style="background:#161b22;">
-      <table class="w-full text-sm">
-        <thead class="text-xs uppercase text-gray-500 border-b border-gray-700">
-          <tr style="background:#0d1117;"><th class="text-left px-4 py-3">Name</th><th class="text-left px-4 py-3">Server IP</th><th class="text-left px-4 py-3">Deleted At (IST)</th><th class="px-4 py-3">Actions</th></tr>
+    <div class="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm">
+      <table class="w-full text-sm text-left">
+        <thead class="text-[11px] font-bold uppercase tracking-wider text-gray-500 border-b border-gray-200 bg-gray-50">
+          <tr><th class="px-5 py-3.5">Name</th><th class="px-5 py-3.5">Server IP</th><th class="px-5 py-3.5">Deleted At (IST)</th><th class="px-5 py-3.5 text-right">Actions</th></tr>
         </thead>
-        <tbody id="binAppBody"><tr><td colspan="4" class="px-4 py-8 text-center text-gray-600">Loading…</td></tr></tbody>
+        <tbody id="binAppBody" class="divide-y divide-gray-100"><tr><td colspan="4" class="px-5 py-10 text-center text-gray-500">Loading…</td></tr></tbody>
       </table>
     </div>
   </div>
@@ -143,141 +203,190 @@
 
 <!-- ══ BACKUP ══ -->
 <div id="tab-backup" class="hidden">
-  <h2 class="font-semibold text-lg mb-4">Backup &amp; Restore</h2>
-  <div class="grid md:grid-cols-2 gap-4">
-    <div class="rounded-xl border border-gray-700 p-6" style="background:#161b22;">
-      <h3 class="font-medium mb-2">📥 Export</h3>
-      <p class="text-sm text-gray-500 mb-4">Download all tasks (including host mapping fields) as Excel (.xlsx).</p>
-      <a href="#" onclick="doExport(event)" class="inline-block px-4 py-2 rounded-lg text-sm font-medium bg-green-700 hover:bg-green-600 transition">Download Backup (.xlsx)</a>
+  <h2 class="font-bold text-xl text-gray-900 tracking-tight mb-5">Backup &amp; Restore</h2>
+  <div class="grid md:grid-cols-2 gap-6">
+    
+    <div class="bg-white rounded-xl border border-gray-200 p-6 shadow-sm hover:shadow-md transition-shadow">
+      <h3 class="font-bold text-gray-900 flex items-center gap-2 mb-2">
+        <span class="bg-green-100 text-green-700 p-1.5 rounded-lg"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg></span>
+        Export Data
+      </h3>
+      <p class="text-sm text-gray-500 mb-5 leading-relaxed">Download a complete snapshot of all tasks and configurations (including host mapping fields) as an Excel (.xlsx) file.</p>
+      <a href="#" onclick="doExport(event)" class="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 hover:text-orange-500 transition-colors shadow-sm">
+        Download Backup (.xlsx)
+      </a>
     </div>
-    <div class="rounded-xl border border-gray-700 p-6" style="background:#161b22;">
-      <h3 class="font-medium mb-2">📤 Import</h3>
-      <p class="text-sm text-gray-500 mb-4">Upload an .xlsx backup. Preview is shown before any changes are applied.</p>
+    
+    <div class="bg-white rounded-xl border border-gray-200 p-6 shadow-sm hover:shadow-md transition-shadow">
+      <h3 class="font-bold text-gray-900 flex items-center gap-2 mb-2">
+        <span class="bg-blue-100 text-blue-700 p-1.5 rounded-lg"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path></svg></span>
+        Import Data
+      </h3>
+      <p class="text-sm text-gray-500 mb-5 leading-relaxed">Upload a previously exported .xlsx backup. A preview of the changes is shown before applying any modifications to the system.</p>
       <input type="file" id="importFile" accept=".xlsx" class="hidden" onchange="doImportPreview(this)">
-      <button onclick="document.getElementById('importFile').click()" class="px-4 py-2 rounded-lg text-sm font-medium bg-blue-700 hover:bg-blue-600 transition">Choose File…</button>
+      <button onclick="document.getElementById('importFile').click()" class="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 hover:text-orange-500 transition-colors shadow-sm">
+        Choose File…
+      </button>
     </div>
   </div>
-  <div id="importPreviewPanel" class="hidden mt-4 rounded-xl border border-gray-700 p-6" style="background:#161b22;">
-    <div class="flex items-center justify-between mb-4">
-      <h3 class="font-semibold">Import Preview</h3>
-      <span id="importExpiry" class="text-xs text-gray-500"></span>
+  
+  <div id="importPreviewPanel" class="hidden mt-6 bg-white rounded-xl border border-gray-200 p-6 shadow-md border-t-4 border-t-orange-500">
+    <div class="flex items-center justify-between mb-5">
+      <h3 class="font-bold text-gray-900 text-lg">Import Preview</h3>
+      <span id="importExpiry" class="text-xs font-medium text-orange-600 bg-orange-50 px-2.5 py-1 rounded-md border border-orange-200"></span>
     </div>
-    <div class="grid grid-cols-2 gap-2 mb-4 text-sm">
-      <div class="rounded-lg p-3 border border-gray-700" style="background:#0d1117;">
-        <div class="text-gray-500 text-xs mb-1">Ping Tasks</div><div id="prevPing" class="text-gray-300 text-xs space-y-0.5"></div>
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-5 text-sm">
+      <div class="rounded-xl p-4 border border-gray-200 bg-gray-50">
+        <div class="font-bold text-gray-600 text-[11px] uppercase tracking-wider mb-2">Ping Tasks</div>
+        <div id="prevPing" class="text-gray-700 space-y-1 font-medium"></div>
       </div>
-      <div class="rounded-lg p-3 border border-gray-700" style="background:#0d1117;">
-        <div class="text-gray-500 text-xs mb-1">Application Tasks</div><div id="prevApp" class="text-gray-300 text-xs space-y-0.5"></div>
+      <div class="rounded-xl p-4 border border-gray-200 bg-gray-50">
+        <div class="font-bold text-gray-600 text-[11px] uppercase tracking-wider mb-2">Application Tasks</div>
+        <div id="prevApp" class="text-gray-700 space-y-1 font-medium"></div>
       </div>
     </div>
-    <div id="importErrors" class="hidden mb-4 p-3 rounded-lg border border-red-800 text-xs text-red-300" style="background:#1c0f0f;"></div>
-    <div class="flex flex-wrap gap-2 mb-3">
-      <button onclick="doImportApply('insert_and_update')" class="px-4 py-2 rounded-lg text-sm font-medium bg-blue-600 hover:bg-blue-500 transition">✔ Insert + Update All</button>
-      <button onclick="doImportApply('insert_only')"       class="px-4 py-2 rounded-lg text-sm font-medium bg-green-700 hover:bg-green-600 transition">+ Insert New Only</button>
-      <button onclick="doImportApply('update_only')"       class="px-4 py-2 rounded-lg text-sm font-medium bg-yellow-700 hover:bg-yellow-600 transition">↻ Update Existing Only</button>
-      <button onclick="doImportApply('cancel')"            class="px-4 py-2 rounded-lg text-sm font-medium border border-gray-600 hover:border-gray-400 transition">✕ Cancel</button>
+    <div id="importErrors" class="hidden mb-5 p-4 rounded-xl border border-red-200 bg-red-50 text-sm text-red-700"></div>
+    <div class="flex flex-wrap gap-3 mb-4">
+      <button onclick="doImportApply('insert_and_update')" class="px-5 py-2.5 rounded-xl text-sm font-bold bg-orange-500 hover:bg-orange-600 text-white shadow-sm transition-all active:scale-95">✔ Insert + Update All</button>
+      <button onclick="doImportApply('insert_only')"       class="px-5 py-2.5 rounded-xl text-sm font-bold bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 transition-all">Insert New Only</button>
+      <button onclick="doImportApply('update_only')"       class="px-5 py-2.5 rounded-xl text-sm font-bold bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 transition-all">↻ Update Existing Only</button>
+      <button onclick="doImportApply('cancel')"            class="px-5 py-2.5 rounded-xl text-sm font-bold text-red-600 bg-red-50 hover:bg-red-100 border border-red-200 transition-all ml-auto">✕ Cancel</button>
     </div>
-    <div id="importResult" class="text-sm"></div>
+    <div id="importResult" class="text-sm font-medium"></div>
   </div>
 </div>
 
 <!-- ══ LOGS ══ -->
 <div id="tab-logs" class="hidden">
-  <div class="flex items-center justify-between mb-4">
-    <h2 class="font-semibold text-lg">Logs</h2>
-    <div class="flex flex-wrap gap-2">
-      <select id="dlRange"    class="inp" style="width:auto;padding:.375rem .75rem;font-size:.8rem;"><option value="today">Today</option><option value="7d">Last 7 Days</option><option value="15d">Last 15 Days</option></select>
-      <select id="dlCategory" class="inp" style="width:auto;padding:.375rem .75rem;font-size:.8rem;"><option value="ALL">All Logs</option><option value="TASK_LOGS">Task Logs</option><option value="ADMIN_LOGS">Admin Activity</option><option value="AUTH_LOGS">Audit / Auth</option></select>
-      <button onclick="downloadLogs('json')" class="px-3 py-1.5 text-xs rounded-lg bg-green-800 hover:bg-green-700 transition">↓ JSON</button>
-      <button onclick="downloadLogs('csv')"  class="px-3 py-1.5 text-xs rounded-lg bg-green-800 hover:bg-green-700 transition">↓ CSV</button>
+  <div class="flex flex-wrap items-center justify-between mb-5 gap-4">
+    <h2 class="font-bold text-xl text-gray-900 tracking-tight">System Logs</h2>
+    <div class="flex flex-wrap items-center gap-2 p-1.5 bg-gray-50 border border-gray-200 rounded-xl shadow-sm">
+      <select id="dlRange" class="inp bg-white border-0 py-1.5 shadow-sm text-xs font-medium" style="width:auto;"><option value="today">Today</option><option value="7d">Last 7 Days</option><option value="15d">Last 15 Days</option></select>
+      <select id="dlCategory" class="inp bg-white border-0 py-1.5 shadow-sm text-xs font-medium" style="width:auto;"><option value="ALL">All Logs</option><option value="TASK_LOGS">Task Logs</option><option value="ADMIN_LOGS">Admin Activity</option><option value="AUTH_LOGS">Audit / Auth</option></select>
+      <div class="w-px h-6 bg-gray-300 mx-1"></div>
+      <button onclick="downloadLogs('json')" class="px-3 py-1.5 text-xs font-bold rounded-lg text-white bg-gray-700 hover:bg-gray-800 transition-colors">↓ JSON</button>
+      <button onclick="downloadLogs('csv')"  class="px-3 py-1.5 text-xs font-bold rounded-lg text-white bg-gray-700 hover:bg-gray-800 transition-colors">↓ CSV</button>
     </div>
   </div>
-  <div class="flex gap-1 mb-4 p-1 rounded-lg w-fit" style="background:#0d1117;">
-    <button id="lstab-task"  class="stab-active   px-3 py-2 text-sm font-medium transition" onclick="setLogTab('task',this)">Task Logs</button>
-    <button id="lstab-admin" class="stab-inactive  px-3 py-2 text-sm font-medium transition" onclick="setLogTab('admin',this)">Admin Activity</button>
-    <button id="lstab-audit" class="stab-inactive  px-3 py-2 text-sm font-medium transition" onclick="setLogTab('audit',this)">Audit / Auth</button>
+  
+  <div class="flex gap-2 mb-5">
+    <button id="lstab-task"  class="stab-active px-4 py-2 text-sm transition-all" onclick="setLogTab('task',this)">Task Logs</button>
+    <button id="lstab-admin" class="stab-inactive px-4 py-2 text-sm transition-all" onclick="setLogTab('admin',this)">Admin Activity</button>
+    <button id="lstab-audit" class="stab-inactive px-4 py-2 text-sm transition-all" onclick="setLogTab('audit',this)">Audit / Auth</button>
   </div>
+  
+  <!-- Task Logs -->
   <div id="logsSection-task">
-    <div class="flex flex-wrap gap-2 mb-3">
-      <select id="taskLogLevel" class="inp" style="width:auto;padding:.375rem .75rem;font-size:.8rem;"><option value="">All Levels</option><option>INFO</option><option>WARN</option><option>ERROR</option></select>
-      <input id="taskLogSearch" placeholder="Task name…" class="si">
-      <button onclick="loadTaskLogs()" class="px-3 py-1.5 text-xs rounded-lg bg-gray-700 hover:bg-gray-600 transition">Apply</button>
+    <div class="flex flex-wrap items-center gap-3 mb-4 bg-white p-3 rounded-xl border border-gray-200 shadow-sm">
+      <select id="taskLogLevel" class="inp w-auto py-2 text-sm"><option value="">All Levels</option><option>INFO</option><option>WARN</option><option>ERROR</option></select>
+      <input id="taskLogSearch" placeholder="Filter by task name…" class="si w-64">
+      <button onclick="loadTaskLogs()" class="px-4 py-2 text-sm font-bold rounded-lg bg-orange-500 hover:bg-orange-600 text-white shadow-sm transition-colors">Apply Filter</button>
     </div>
-    <div class="rounded-xl border border-gray-700 overflow-hidden" style="background:#161b22;">
-      <table class="w-full text-xs">
-        <thead class="text-gray-500 uppercase border-b border-gray-700"><tr style="background:#0d1117;"><th class="text-left px-3 py-3 w-48">Time (IST)</th><th class="text-left px-3 py-3 w-16">Level</th><th class="text-left px-3 py-3 w-28">Category</th><th class="text-left px-3 py-3 w-28">Task</th><th class="text-left px-3 py-3">Message</th></tr></thead>
-        <tbody id="taskLogsBody"><tr><td colspan="5" class="px-4 py-6 text-center text-gray-600">Click Apply to load</td></tr></tbody>
+    <div class="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm">
+      <table class="w-full text-sm text-left">
+        <thead class="text-[11px] font-bold uppercase tracking-wider text-gray-500 border-b border-gray-200 bg-gray-50">
+          <tr><th class="px-5 py-3 w-48">Time (IST)</th><th class="px-5 py-3 w-20">Level</th><th class="px-5 py-3 w-32">Category</th><th class="px-5 py-3 w-40">Task</th><th class="px-5 py-3">Message</th></tr>
+        </thead>
+        <tbody id="taskLogsBody" class="divide-y divide-gray-100"><tr><td colspan="5" class="px-5 py-10 text-center text-gray-500">Click Apply Filter to load</td></tr></tbody>
       </table>
     </div>
-    <div class="mt-2 flex items-center gap-2">
-      <button onclick="changeTaskLogPage(-1)" class="px-3 py-1 text-xs rounded bg-gray-700 hover:bg-gray-600">← Prev</button>
-      <span id="taskLogPageLabel" class="text-xs text-gray-500 px-2">Page 1</span>
-      <button onclick="changeTaskLogPage(1)"  class="px-3 py-1 text-xs rounded bg-gray-700 hover:bg-gray-600">Next →</button>
+    <div class="mt-4 flex items-center justify-center gap-4 bg-white py-2 rounded-xl border border-gray-200 shadow-sm w-max mx-auto px-4">
+      <button onclick="changeTaskLogPage(-1)" class="px-3 py-1.5 text-sm font-medium rounded-lg bg-gray-50 border border-gray-200 hover:bg-gray-100 text-gray-700">← Prev</button>
+      <span id="taskLogPageLabel" class="text-sm font-bold text-gray-600">Page 1</span>
+      <button onclick="changeTaskLogPage(1)"  class="px-3 py-1.5 text-sm font-medium rounded-lg bg-gray-50 border border-gray-200 hover:bg-gray-100 text-gray-700">Next →</button>
     </div>
   </div>
+  
+  <!-- Admin Logs -->
   <div id="logsSection-admin" class="hidden">
-    <div class="flex flex-wrap gap-2 mb-3">
-      <select id="adminLogLevel" class="inp" style="width:auto;padding:.375rem .75rem;font-size:.8rem;"><option value="">All Levels</option><option>INFO</option><option>WARN</option><option>ERROR</option></select>
-      <button onclick="loadAdminLogs()" class="px-3 py-1.5 text-xs rounded-lg bg-gray-700 hover:bg-gray-600 transition">Apply</button>
+    <div class="flex flex-wrap items-center gap-3 mb-4 bg-white p-3 rounded-xl border border-gray-200 shadow-sm">
+      <select id="adminLogLevel" class="inp w-auto py-2 text-sm"><option value="">All Levels</option><option>INFO</option><option>WARN</option><option>ERROR</option></select>
+      <button onclick="loadAdminLogs()" class="px-4 py-2 text-sm font-bold rounded-lg bg-orange-500 hover:bg-orange-600 text-white shadow-sm transition-colors">Apply Filter</button>
     </div>
-    <div class="rounded-xl border border-gray-700 overflow-hidden" style="background:#161b22;">
-      <table class="w-full text-xs">
-        <thead class="text-gray-500 uppercase border-b border-gray-700"><tr style="background:#0d1117;"><th class="text-left px-3 py-3 w-48">Time (IST)</th><th class="text-left px-3 py-3 w-16">Level</th><th class="text-left px-3 py-3 w-24">Actor</th><th class="text-left px-3 py-3">Message</th></tr></thead>
-        <tbody id="adminLogsBody"><tr><td colspan="4" class="px-4 py-6 text-center text-gray-600">Click Apply to load</td></tr></tbody>
+    <div class="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm">
+      <table class="w-full text-sm text-left">
+        <thead class="text-[11px] font-bold uppercase tracking-wider text-gray-500 border-b border-gray-200 bg-gray-50">
+          <tr><th class="px-5 py-3 w-48">Time (IST)</th><th class="px-5 py-3 w-20">Level</th><th class="px-5 py-3 w-32">Actor</th><th class="px-5 py-3">Message</th></tr>
+        </thead>
+        <tbody id="adminLogsBody" class="divide-y divide-gray-100"><tr><td colspan="4" class="px-5 py-10 text-center text-gray-500">Click Apply Filter to load</td></tr></tbody>
       </table>
     </div>
-    <div class="mt-2 flex items-center gap-2">
-      <button onclick="changeAdminLogPage(-1)" class="px-3 py-1 text-xs rounded bg-gray-700 hover:bg-gray-600">← Prev</button>
-      <span id="adminLogPageLabel" class="text-xs text-gray-500 px-2">Page 1</span>
-      <button onclick="changeAdminLogPage(1)"  class="px-3 py-1 text-xs rounded bg-gray-700 hover:bg-gray-600">Next →</button>
+    <div class="mt-4 flex items-center justify-center gap-4 bg-white py-2 rounded-xl border border-gray-200 shadow-sm w-max mx-auto px-4">
+      <button onclick="changeAdminLogPage(-1)" class="px-3 py-1.5 text-sm font-medium rounded-lg bg-gray-50 border border-gray-200 hover:bg-gray-100 text-gray-700">← Prev</button>
+      <span id="adminLogPageLabel" class="text-sm font-bold text-gray-600">Page 1</span>
+      <button onclick="changeAdminLogPage(1)"  class="px-3 py-1.5 text-sm font-medium rounded-lg bg-gray-50 border border-gray-200 hover:bg-gray-100 text-gray-700">Next →</button>
     </div>
   </div>
+  
+  <!-- Audit Logs -->
   <div id="logsSection-audit" class="hidden">
-    <div class="flex flex-wrap gap-2 mb-3">
-      <button onclick="loadAuditLogs()" class="px-3 py-1.5 text-xs rounded-lg bg-gray-700 hover:bg-gray-600 transition">Refresh</button>
+    <div class="flex flex-wrap items-center gap-3 mb-4">
+      <button onclick="loadAuditLogs()" class="px-4 py-2 text-sm font-bold rounded-xl border border-gray-200 bg-white text-gray-700 shadow-sm hover:text-orange-500 hover:bg-gray-50 transition-colors flex items-center gap-2">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+        Refresh Logs
+      </button>
     </div>
-    <div class="rounded-xl border border-gray-700 overflow-hidden" style="background:#161b22;">
-      <table class="w-full text-xs">
-        <thead class="text-gray-500 uppercase border-b border-gray-700"><tr style="background:#0d1117;"><th class="text-left px-3 py-3 w-48">Time (IST)</th><th class="text-left px-3 py-3 w-24">Actor</th><th class="text-left px-3 py-3 w-36">Action</th><th class="text-left px-3 py-3">Detail</th></tr></thead>
-        <tbody id="auditLogsBody"><tr><td colspan="4" class="px-4 py-6 text-center text-gray-600">Click Refresh to load</td></tr></tbody>
+    <div class="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm">
+      <table class="w-full text-sm text-left">
+        <thead class="text-[11px] font-bold uppercase tracking-wider text-gray-500 border-b border-gray-200 bg-gray-50">
+          <tr><th class="px-5 py-3 w-48">Time (IST)</th><th class="px-5 py-3 w-32">Actor</th><th class="px-5 py-3 w-48">Action</th><th class="px-5 py-3">Detail</th></tr>
+        </thead>
+        <tbody id="auditLogsBody" class="divide-y divide-gray-100"><tr><td colspan="4" class="px-5 py-10 text-center text-gray-500">Click Refresh to load</td></tr></tbody>
       </table>
     </div>
-    <div class="mt-2 flex items-center gap-2">
-      <button onclick="changeAuditLogPage(-1)" class="px-3 py-1 text-xs rounded bg-gray-700 hover:bg-gray-600">← Prev</button>
-      <span id="auditLogPageLabel" class="text-xs text-gray-500 px-2">Page 1</span>
-      <button onclick="changeAuditLogPage(1)"  class="px-3 py-1 text-xs rounded bg-gray-700 hover:bg-gray-600">Next →</button>
+    <div class="mt-4 flex items-center justify-center gap-4 bg-white py-2 rounded-xl border border-gray-200 shadow-sm w-max mx-auto px-4">
+      <button onclick="changeAuditLogPage(-1)" class="px-3 py-1.5 text-sm font-medium rounded-lg bg-gray-50 border border-gray-200 hover:bg-gray-100 text-gray-700">← Prev</button>
+      <span id="auditLogPageLabel" class="text-sm font-bold text-gray-600">Page 1</span>
+      <button onclick="changeAuditLogPage(1)"  class="px-3 py-1.5 text-sm font-medium rounded-lg bg-gray-50 border border-gray-200 hover:bg-gray-100 text-gray-700">Next →</button>
     </div>
   </div>
-  <div class="mt-6">
-    <div class="flex items-center justify-between mb-2">
-      <span class="text-sm font-medium text-gray-400">Log Archives (end-of-day files)</span>
-      <button onclick="loadArchives()" class="text-xs text-blue-400 hover:text-blue-300">↺ Refresh</button>
+  
+  <div class="mt-8 bg-white p-5 rounded-xl border border-gray-200 shadow-sm">
+    <div class="flex items-center justify-between mb-4 pb-3 border-b border-gray-100">
+      <h3 class="font-bold text-gray-800 flex items-center gap-2">
+        <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4"></path></svg>
+        Log Archives (end-of-day files)
+      </h3>
+      <button onclick="loadArchives()" class="text-xs font-bold text-orange-500 hover:text-orange-600 bg-orange-50 px-2 py-1 rounded border border-orange-100">↺ Refresh</button>
     </div>
-    <div id="archivesList" class="text-xs text-gray-600">Click Refresh to load archives.</div>
+    <div id="archivesList" class="text-sm text-gray-500 font-medium">Click Refresh to load archives.</div>
   </div>
 </div>
 
 <!-- ══ SETTINGS ══ -->
 <div id="tab-settings" class="hidden">
-  <h2 class="font-semibold text-lg mb-4">Settings &amp; Health</h2>
-  <div class="grid md:grid-cols-2 gap-4">
-    <div class="rounded-xl border border-gray-700 p-5" style="background:#161b22;">
-      <h3 class="font-medium mb-1">📧 Mail Test</h3>
-      <p class="text-xs text-gray-500 mb-3">Sends via system <code class="text-blue-400">mail</code> → Postfix → relay. No external SMTP needed.</p>
-      <div class="flex gap-2">
-        <input id="testEmailAddr" type="email" placeholder="you@company.com" class="inp flex-1">
-        <button onclick="sendTestMail()" class="px-4 py-2 rounded-lg text-sm bg-blue-700 hover:bg-blue-600 transition">Send</button>
+  <h2 class="font-bold text-xl text-gray-900 tracking-tight mb-5">Settings &amp; Health</h2>
+  <div class="grid md:grid-cols-2 gap-6">
+    
+    <div class="bg-white rounded-xl border border-gray-200 p-6 shadow-sm relative overflow-hidden">
+      <div class="absolute top-0 right-0 w-32 h-32 bg-orange-50 rounded-bl-full -z-0 opacity-50"></div>
+      <h3 class="font-bold text-gray-900 mb-2 relative z-10">📧 Mail Delivery Test</h3>
+      <p class="text-sm text-gray-500 mb-4 relative z-10">Sends via system <code class="text-orange-600 font-mono bg-orange-50 px-1 rounded">mail</code> → Postfix → relay. No external SMTP needed.</p>
+      <div class="flex flex-wrap sm:flex-nowrap gap-3 relative z-10">
+        <input id="testEmailAddr" type="email" placeholder="admin@company.com" class="inp flex-1">
+        <button onclick="sendTestMail()" class="px-5 py-2.5 rounded-xl text-sm font-bold bg-gray-800 hover:bg-gray-900 text-white transition-colors shadow-sm whitespace-nowrap">Send Test</button>
       </div>
-      <div id="testMailResult" class="mt-2 text-sm"></div>
+      <div id="testMailResult" class="mt-3 text-sm font-medium relative z-10"></div>
     </div>
-    <div class="rounded-xl border border-gray-700 p-5" style="background:#161b22;">
-      <h3 class="font-medium mb-3">🔌 System Health</h3>
-      <div id="healthInfo" class="text-sm text-gray-400 space-y-1">Loading…</div>
-      <button onclick="loadHealth()" class="mt-3 text-xs text-blue-400 hover:text-blue-300">↺ Refresh</button>
+    
+    <div class="bg-white rounded-xl border border-gray-200 p-6 shadow-sm">
+      <div class="flex items-center justify-between mb-4 pb-2 border-b border-gray-100">
+        <h3 class="font-bold text-gray-900 flex items-center gap-2">
+          <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z"></path></svg>
+          System Health
+        </h3>
+        <button onclick="loadHealth()" class="text-xs font-bold text-orange-500 hover:text-orange-600 bg-orange-50 px-2 py-1 rounded border border-orange-100">↺ Refresh</button>
+      </div>
+      <div id="healthInfo" class="text-sm text-gray-600 space-y-1.5 font-medium">Loading…</div>
     </div>
   </div>
-  <div class="mt-4 p-4 rounded-xl border border-gray-800 text-xs text-gray-600" style="background:#0d1117;">
-    ℹ Audit / Auth logs are available under the <button onclick="setTab('logs',document.querySelectorAll('[onclick*=setTab]')[3])" class="text-blue-400 hover:text-blue-300">Logs tab → Audit / Auth</button>.
+  
+  <div class="mt-6 p-4 rounded-xl border border-blue-200 bg-blue-50 text-sm text-blue-800 flex items-start gap-3 shadow-sm">
+    <svg class="w-5 h-5 text-blue-500 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+    <div>
+      Audit / Auth logs have moved. They are available under the 
+      <button onclick="setTab('logs',document.querySelectorAll('[onclick*=setTab]')[3])" class="font-bold underline hover:text-blue-900 ml-1">Logs tab &rarr; Audit / Auth</button>.
+    </div>
   </div>
 </div>
 
@@ -285,25 +394,26 @@
 
 <!-- ══ TASK MODAL ══ -->
 <div id="taskModal" class="fixed inset-0 z-50 hidden modal-bg flex items-center justify-center p-4">
-  <div class="w-full max-w-xl rounded-xl border border-gray-700 flex flex-col max-h-[92vh]" style="background:#161b22;">
-    <div class="flex items-center justify-between px-6 py-4 border-b border-gray-700">
-      <h3 id="tmTitle" class="font-semibold">Add Task</h3>
-      <button onclick="closeTaskModal()" class="text-gray-500 hover:text-white text-lg">✕</button>
+  <div class="w-full max-w-2xl bg-white rounded-2xl border border-gray-200 shadow-2xl flex flex-col max-h-[92vh]">
+    <div class="flex items-center justify-between px-6 py-4 border-b border-gray-100 bg-gray-50 rounded-t-2xl">
+      <h3 id="tmTitle" class="font-bold text-lg text-gray-900 tracking-tight">Add Task</h3>
+      <button onclick="closeTaskModal()" class="text-gray-400 hover:text-gray-600 bg-white border border-gray-200 rounded-full w-8 h-8 flex items-center justify-center transition-colors shadow-sm text-xl leading-none">&times;</button>
     </div>
     <div class="overflow-y-auto flex-1 p-6">
-      <div id="formErr" class="hidden mb-4 px-3 py-2 rounded-lg text-sm bg-red-950 text-red-300 border border-red-800"></div>
-      <div class="space-y-4">
+      <div id="formErr" class="hidden mb-5 p-3 rounded-xl text-sm bg-red-50 text-red-700 border border-red-200 font-medium"></div>
+      
+      <div class="space-y-5">
         <input type="hidden" id="taskId">
 
         <!-- Name + Type -->
-        <div class="grid grid-cols-2 gap-3">
+        <div class="grid grid-cols-2 gap-4">
           <div>
-            <label class="block text-xs text-gray-500 mb-1">Task Name *</label>
+            <label class="block text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1.5">Task Name *</label>
             <input id="fName" required class="inp">
           </div>
           <div>
-            <label class="block text-xs text-gray-500 mb-1">Type *</label>
-            <select id="fType" onchange="onTypeChange()" class="inp">
+            <label class="block text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1.5">Type *</label>
+            <select id="fType" onchange="onTypeChange()" class="inp font-medium">
               <option value="PING">Ping (ICMP)</option>
               <option value="APPLICATION">Application (HTTP)</option>
             </select>
@@ -312,114 +422,117 @@
 
         <!-- Target -->
         <div>
-          <label class="block text-xs text-gray-500 mb-1" id="targetLabel">Target IP / Hostname *</label>
-          <input id="fTarget" required class="inp" placeholder="e.g. 192.168.108.176">
+          <label class="block text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1.5" id="targetLabel">Target IP / Hostname *</label>
+          <input id="fTarget" required class="inp font-mono text-sm" placeholder="e.g. 192.168.108.176">
         </div>
 
         <!-- PING-only fields -->
         <div id="pingFields">
-          <label class="block text-xs text-gray-500 mb-1">OS Type</label>
-          <select id="fOsType" class="inp" style="max-width:200px;">
+          <label class="block text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1.5">OS Type</label>
+          <select id="fOsType" class="inp font-medium" style="max-width:200px;">
             <option>Linux</option><option>Windows</option><option>Other</option>
           </select>
         </div>
 
         <!-- APPLICATION-only: URL rows -->
         <div id="urlFields" class="hidden">
-          <label class="block text-xs text-gray-500 mb-1">URLs to Monitor *</label>
-          <div id="urlList" class="space-y-2"></div>
+          <label class="block text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1.5">URLs to Monitor *</label>
+          <div id="urlList" class="space-y-3"></div>
           <button type="button" onclick="addUrlRow()"
-            class="mt-2 text-xs text-blue-400 hover:text-blue-300">+ Add URL</button>
+            class="mt-3 text-xs font-bold text-orange-500 hover:text-orange-600 bg-orange-50 px-3 py-1.5 rounded-lg border border-orange-100 flex items-center gap-1">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path></svg>
+            Add URL
+          </button>
         </div>
 
         <!-- APPLICATION-only: Host Mapping -->
         <div id="hostMappingSection" class="hidden">
-          <div class="rounded-lg border border-gray-700 p-4" style="background:#0d1117;">
-            <label class="flex items-center gap-3 cursor-pointer select-none mb-1">
-              <input id="fHmEnabled" type="checkbox" class="w-4 h-4 accent-blue-500" onchange="onHmToggle()">
+          <div class="rounded-xl border border-gray-200 bg-gray-50 p-5 shadow-sm">
+            <label class="flex items-start gap-3 cursor-pointer select-none">
+              <input id="fHmEnabled" type="checkbox" class="w-4 h-4 mt-0.5 accent-orange-500" onchange="onHmToggle()">
               <div>
-                <span class="text-sm font-medium">🔗 Enable Hostname Mapping</span>
-                <p class="text-xs text-gray-500 mt-0.5">
-                  Use this when your URL contains a hostname (e.g.
-                  <code class="text-blue-400">dev.uimcn.tsaro.com</code>) that must resolve to a
-                  specific private IP instead of public DNS.
-                  The monitor connects to the mapped IP but sends the original hostname in the HTTP Host header.
+                <span class="text-sm font-bold text-gray-900 flex items-center gap-1.5">
+                  <svg class="w-4 h-4 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"></path></svg>
+                  Enable Hostname Mapping
+                </span>
+                <p class="text-xs text-gray-500 mt-1 leading-relaxed">
+                  Use this when your URL contains a hostname (e.g. <code class="text-orange-600 bg-orange-50 px-1 rounded font-mono border border-orange-100">dev.uimcn.tsaro.com</code>) that must resolve to a specific private IP.
                 </p>
               </div>
             </label>
 
-            <div id="hmFields" class="hidden mt-3 space-y-3">
-              <div class="grid grid-cols-2 gap-3">
+            <div id="hmFields" class="hidden mt-4 pt-4 border-t border-gray-200 space-y-4">
+              <div class="grid grid-cols-2 gap-4">
                 <div>
-                  <label class="block text-xs text-gray-500 mb-1">Hostname *</label>
-                  <input id="fHmHostname" placeholder="dev.uimcn.tsaro.com" class="inp">
-                  <p class="text-xs text-gray-600 mt-0.5">Must match the hostname in your URL(s)</p>
+                  <label class="block text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1.5">Hostname *</label>
+                  <input id="fHmHostname" placeholder="dev.uimcn.tsaro.com" class="inp font-mono text-sm">
                 </div>
                 <div>
-                  <label class="block text-xs text-gray-500 mb-1">IP Address *</label>
-                  <input id="fHmIp" placeholder="192.168.108.176" class="inp">
-                  <p class="text-xs text-gray-600 mt-0.5">Server IP to connect to</p>
+                  <label class="block text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1.5">IP Address *</label>
+                  <input id="fHmIp" placeholder="192.168.108.176" class="inp font-mono text-sm">
                 </div>
               </div>
-              <div class="hm-box text-xs text-blue-300 space-y-1">
-                <div>📡 How it works:</div>
-                <div>① Monitor parses the URL and finds <b id="hmPreviewHostname" class="text-blue-200">the hostname</b></div>
-                <div>② TCP connection goes to <b id="hmPreviewIp" class="text-green-300">the IP address</b></div>
-                <div>③ HTTP Host header keeps the original hostname</div>
-                <div>④ Your server responds as if accessed by the hostname</div>
+              <div class="bg-white border border-blue-100 rounded-lg p-3 text-xs text-gray-600 space-y-1.5 shadow-sm">
+                <div class="font-bold text-blue-700 mb-1 flex items-center gap-1"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg> How it works:</div>
+                <div class="flex items-center gap-2"><span class="bg-gray-100 text-gray-500 w-4 h-4 flex items-center justify-center rounded-full text-[10px] font-bold">1</span> Monitor finds <b id="hmPreviewHostname" class="text-blue-600 font-mono">the hostname</b></div>
+                <div class="flex items-center gap-2"><span class="bg-gray-100 text-gray-500 w-4 h-4 flex items-center justify-center rounded-full text-[10px] font-bold">2</span> Connects via TCP to <b id="hmPreviewIp" class="text-green-600 font-mono">the IP address</b></div>
+                <div class="flex items-center gap-2"><span class="bg-gray-100 text-gray-500 w-4 h-4 flex items-center justify-center rounded-full text-[10px] font-bold">3</span> Host header uses original hostname</div>
               </div>
             </div>
           </div>
         </div>
 
         <!-- Interval + N Threshold -->
-        <div class="grid grid-cols-2 gap-3">
+        <div class="grid grid-cols-2 gap-4">
           <div>
-            <label class="block text-xs text-gray-500 mb-1">Check Interval (min, 3–15) *</label>
-            <input id="fInterval" type="number" min="3" max="15" value="3" required class="inp">
+            <label class="block text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1.5">Check Interval (min, 3–15) *</label>
+            <input id="fInterval" type="number" min="3" max="15" value="3" required class="inp font-medium">
           </div>
           <div>
-            <label class="block text-xs text-gray-500 mb-1">N Threshold (1–5)</label>
-            <input id="fN" type="number" min="1" max="5" value="1" class="inp">
+            <label class="block text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1.5">N Threshold (1–5)</label>
+            <input id="fN" type="number" min="1" max="5" value="1" class="inp font-medium">
           </div>
         </div>
 
         <!-- Email alerts -->
-        <div class="border border-gray-700 rounded-lg p-4 space-y-3">
-          <div class="flex items-center justify-between">
-            <span class="text-sm font-medium">📧 Email Alerts</span>
-            <label class="flex items-center gap-2 text-sm cursor-pointer">
-              <input id="fEmailEnabled" type="checkbox" class="w-4 h-4" checked onchange="onEmailToggle()">
-              <span class="text-gray-400">Enabled</span>
+        <div class="border border-gray-200 rounded-xl p-5 space-y-4 shadow-sm bg-white">
+          <div class="flex items-center justify-between pb-3 border-b border-gray-100">
+            <span class="text-sm font-bold text-gray-900 flex items-center gap-1.5">
+              <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path></svg>
+              Email Alerts
+            </span>
+            <label class="flex items-center gap-2 text-sm cursor-pointer select-none">
+              <input id="fEmailEnabled" type="checkbox" class="w-4 h-4 accent-orange-500" checked onchange="onEmailToggle()">
+              <span class="font-medium text-gray-600">Enabled</span>
             </label>
           </div>
-          <div id="emailFields" class="space-y-3">
+          <div id="emailFields" class="space-y-3 transition-opacity">
             <div>
-              <label class="block text-xs text-gray-500 mb-1">L1 — Immediate alert</label>
+              <label class="block text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1">L1 — Immediate alert</label>
               <input id="fL1" placeholder="email1@co.com, email2@co.com" class="inp">
             </div>
             <div>
-              <label class="block text-xs text-gray-500 mb-1">L2 — After 48h</label>
+              <label class="block text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1">L2 — After 48h</label>
               <input id="fL2" placeholder="manager@co.com" class="inp">
             </div>
             <div>
-              <label class="block text-xs text-gray-500 mb-1">L3 — Repeat every 48h after L2</label>
+              <label class="block text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1">L3 — Repeat every 48h after L2</label>
               <input id="fL3" placeholder="director@co.com" class="inp">
             </div>
           </div>
         </div>
 
-        <div class="flex gap-2 pt-2">
+        <div class="flex gap-3 pt-3">
           <button type="button" onclick="testBeforeSave()"
-            class="px-4 py-2 rounded-lg text-sm border border-gray-600 hover:border-gray-400 transition">
+            class="px-5 py-3 rounded-xl text-sm font-bold bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 hover:text-orange-500 transition-colors shadow-sm">
             Test Connection
           </button>
           <button type="button" onclick="saveTask()"
-            class="flex-1 px-4 py-2 rounded-lg text-sm font-medium bg-blue-600 hover:bg-blue-500 transition">
+            class="flex-1 px-5 py-3 rounded-xl text-sm font-bold bg-orange-500 hover:bg-orange-600 text-white shadow-md shadow-orange-500/20 transition-all active:scale-[0.98]">
             Save Task
           </button>
         </div>
-        <div id="testResult" class="text-sm"></div>
+        <div id="testResult" class="text-sm font-medium"></div>
       </div>
     </div>
   </div>
@@ -427,12 +540,12 @@
 
 <!-- ══ TASK DETAIL MODAL ══ -->
 <div id="detailModal" class="fixed inset-0 z-50 hidden modal-bg flex items-center justify-center p-4">
-  <div class="w-full max-w-2xl rounded-xl border border-gray-700 flex flex-col max-h-[92vh]" style="background:#161b22;">
-    <div class="flex items-center justify-between px-6 py-4 border-b border-gray-700">
-      <h3 id="dtTitle" class="font-semibold">Task Detail</h3>
-      <button onclick="closeDetailModal()" class="text-gray-500 hover:text-white">✕</button>
+  <div class="w-full max-w-2xl bg-white rounded-2xl border border-gray-200 shadow-2xl flex flex-col max-h-[92vh]">
+    <div class="flex items-center justify-between px-6 py-4 border-b border-gray-100 bg-gray-50 rounded-t-2xl">
+      <h3 id="dtTitle" class="font-bold text-lg text-gray-900 tracking-tight">Task Detail</h3>
+      <button onclick="closeDetailModal()" class="text-gray-400 hover:text-gray-600 bg-white border border-gray-200 rounded-full w-8 h-8 flex items-center justify-center transition-colors shadow-sm text-xl leading-none">&times;</button>
     </div>
-    <div id="dtBody" class="overflow-y-auto flex-1 p-6 space-y-4 text-sm"></div>
+    <div id="dtBody" class="overflow-y-auto flex-1 p-6 space-y-5 text-sm"></div>
   </div>
 </div>
 
@@ -448,23 +561,18 @@ function toIST(utcVal) {
   }).replace(/\//g,'-') + ' IST';
 }
 setInterval(() => {
-  document.getElementById('istClockAdmin').textContent = toIST(new Date().toISOString());
+  const c = document.getElementById('istClockAdmin');
+  if (c) c.textContent = toIST(new Date().toISOString());
 }, 1000);
 
 // ── Auth guard ─────────────────────────────────────────────────────────────────
-API.me().then(u => { document.getElementById('userLabel').textContent = '👤 ' + u.username; })
+API.me().then(u => { document.getElementById('userLabel').innerHTML = `<svg class="w-4 h-4 text-gray-400 inline-block mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg> ${u.username}`; })
         .catch(() => { window.location = '/admin/login.html'; });
 async function doLogout() { await API.logout().catch(()=>{}); window.location='/admin/login.html'; }
 
 // ── Utilities ──────────────────────────────────────────────────────────────────
 function escHtml(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 function escAttr(s){ return String(s||'').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
-function relTime(iso){
-  if(!iso) return '—';
-  const d=Math.round((Date.now()-new Date(iso))/60000);
-  if(d<1) return 'just now'; if(d<60) return d+'m ago';
-  return Math.floor(d/60)+'h '+d%60+'m ago';
-}
 
 // ── Tab system ─────────────────────────────────────────────────────────────────
 const TABS=['tasks','bin','backup','logs','settings'];
@@ -474,8 +582,8 @@ function setTab(name,btn){
     b.className=b.className.replace('tab-active','tab-inactive');
   });
   if(btn) btn.className=btn.className.replace('tab-inactive','tab-active');
-  if(name==='bin')     loadBin();
-  if(name==='logs')    { loadTaskLogs(); loadArchives(); }
+  if(name==='bin')      loadBin();
+  if(name==='logs')     { loadTaskLogs(); loadArchives(); }
   if(name==='settings') loadHealth();
 }
 
@@ -520,57 +628,54 @@ function renderTasks(){
 
   document.getElementById('pingTasksBody').innerHTML=ping.length
     ? ping.map(t=>taskRow(t,'ping')).join('')
-    : `<tr><td colspan="10" class="px-4 py-8 text-center text-gray-600">${ps?'No matching ping tasks.':'No ping tasks yet.'}</td></tr>`;
+    : `<tr><td colspan="10" class="px-5 py-10 text-center text-gray-500">${ps?'No matching ping tasks.':'No ping tasks yet.'}</td></tr>`;
 
   document.getElementById('appTasksBody').innerHTML=app.length
     ? app.map(t=>taskRow(t,'app')).join('')
-    : `<tr><td colspan="11" class="px-4 py-8 text-center text-gray-600">${as?'No matching application tasks.':'No application tasks yet.'}</td></tr>`;
+    : `<tr><td colspan="11" class="px-5 py-10 text-center text-gray-500">${as?'No matching application tasks.':'No application tasks yet.'}</td></tr>`;
 }
 
 function taskRow(t,mode){
   const inactive=!t.is_active;
-  const dim=inactive?'opacity-60':'';
+  const dim=inactive?'opacity-70 bg-gray-50':'';
   const sb=inactive
-    ?'<span class="px-1.5 py-0.5 rounded text-xs badge-pause font-bold">—</span>'
+    ?'<span class="px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider badge-pause">PHASED</span>'
     :t.status==='OK'
-      ?'<span class="px-1.5 py-0.5 rounded text-xs badge-ok font-bold">OK</span>'
-      :'<span class="px-1.5 py-0.5 rounded text-xs badge-fault font-bold">FAULT</span>';
+      ?'<span class="px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider badge-ok">OK</span>'
+      :'<span class="px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider badge-fault pulse-orange">FAULT</span>';
 
   const urlCount=mode==='app'&&t.urls
     ?(()=>{try{return JSON.parse(t.urls).length;}catch{return'?';}})():'';
 
-  // Show host mapping indicator for Application tasks
   const hmBadge=mode==='app'&&t.host_mapping_enabled
-    ?`<span class="px-1 py-0.5 rounded text-xs" style="background:#0a1628;color:#60a5fa;" title="${escAttr(t.host_mapping_hostname)}→${escAttr(t.host_mapping_ip)}">🔗 mapped</span>`
-    :(mode==='app'?'<span class="text-gray-700 text-xs">—</span>':'');
+    ?`<span class="px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider bg-blue-50 text-blue-700 border border-blue-200" title="${escAttr(t.host_mapping_hostname)}→${escAttr(t.host_mapping_ip)}">🔗 MAPPED</span>`
+    :(mode==='app'?'<span class="text-gray-400 font-medium text-xs">—</span>':'');
 
-  const pingCols=`<td class="px-4 py-2 font-mono text-xs text-blue-400">${escHtml(t.target)}</td>
-    <td class="px-4 py-2 text-gray-400 text-xs">${escHtml(t.os_type||'Linux')}</td>`;
-  const appCols=`<td class="px-4 py-2 font-mono text-xs text-blue-400">${escHtml(t.target)}</td>
-    <td class="px-4 py-2 text-gray-500 text-xs">${urlCount} URL${urlCount!==1?'s':''}</td>
-    <td class="px-4 py-2">${hmBadge}</td>`;
+  const pingCols=`<td class="px-5 py-3 font-mono text-xs text-orange-600 font-semibold">${escHtml(t.target)}</td>
+    <td class="px-5 py-3 text-gray-500 text-xs font-medium">${escHtml(t.os_type||'Linux')}</td>`;
+  const appCols=`<td class="px-5 py-3 font-mono text-xs text-orange-600 font-semibold">${escHtml(t.target)}</td>
+    <td class="px-5 py-3 text-gray-500 text-xs font-medium">${urlCount} URL${urlCount!==1?'s':''}</td>
+    <td class="px-5 py-3">${hmBadge}</td>`;
 
-  const colspan=mode==='ping'?10:11;
-
-  return `<tr class="border-t border-gray-800 hover:bg-gray-800/30 cursor-pointer ${dim}" onclick="openDetail('${t.id}')">
-    <td class="px-4 py-2 font-medium">${escHtml(t.name)}</td>
+  return `<tr class="hover:bg-gray-50 cursor-pointer transition-colors ${dim}" onclick="openDetail('${t.id}')">
+    <td class="px-5 py-3 font-bold text-gray-800">${escHtml(t.name)}</td>
     ${mode==='ping'?pingCols:appCols}
-    <td class="px-4 py-2 text-gray-400 text-xs">${t.interval_min}m</td>
-    <td class="px-4 py-2 text-gray-400 text-xs">${t.n_threshold}</td>
-    <td class="px-4 py-2">${sb}</td>
-    <td class="px-4 py-2" onclick="event.stopPropagation()">
-      <button onclick="toggleActive('${t.id}',event)" class="px-2 py-0.5 rounded text-xs ${t.is_active?'bg-green-900 text-green-300':'bg-gray-800 text-gray-500'}">${t.is_active?'▶ ON':'⏸ OFF'}</button>
+    <td class="px-5 py-3 text-gray-500 text-xs font-medium">${t.interval_min}m</td>
+    <td class="px-5 py-3 text-gray-500 text-xs font-medium">${t.n_threshold}</td>
+    <td class="px-5 py-3">${sb}</td>
+    <td class="px-5 py-3" onclick="event.stopPropagation()">
+      <button onclick="toggleActive('${t.id}',event)" class="px-2.5 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider border shadow-sm transition-colors ${t.is_active?'bg-green-50 text-green-700 border-green-200 hover:bg-green-100':'bg-white text-gray-500 border-gray-200 hover:bg-gray-50'}">${t.is_active?'▶ ON':'⏸ OFF'}</button>
     </td>
-    <td class="px-4 py-2" onclick="event.stopPropagation()">
-      <button onclick="toggleEmail('${t.id}',event)" class="px-2 py-0.5 rounded text-xs ${t.email_enabled?'bg-blue-900 text-blue-300':'bg-gray-800 text-gray-500'}">${t.email_enabled?'✉ ON':'✉ OFF'}</button>
+    <td class="px-5 py-3" onclick="event.stopPropagation()">
+      <button onclick="toggleEmail('${t.id}',event)" class="px-2.5 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider border shadow-sm transition-colors ${t.email_enabled?'bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100':'bg-white text-gray-500 border-gray-200 hover:bg-gray-50'}">${t.email_enabled?'✉ ON':'✉ OFF'}</button>
     </td>
-    <td class="px-4 py-2 text-xs text-gray-500">${t.last_checked?toIST(t.last_checked):'—'}</td>
-    <td class="px-4 py-2 text-right" onclick="event.stopPropagation()">
-      <div class="flex items-center justify-end gap-1">
+    <td class="px-5 py-3 text-xs text-gray-500 font-medium">${t.last_checked?toIST(t.last_checked):'—'}</td>
+    <td class="px-5 py-3 text-right" onclick="event.stopPropagation()">
+      <div class="flex items-center justify-end gap-1.5">
         <button onclick="runTask('${t.id}')" ${inactive?'disabled':''} title="Run now"
-          class="px-2 py-1 text-xs rounded ${inactive?'bg-gray-800 text-gray-600 cursor-not-allowed':'bg-gray-700 hover:bg-gray-600'}">▶</button>
-        <button onclick="openTaskModal('${t.id}')" title="Edit" class="px-2 py-1 text-xs rounded bg-gray-700 hover:bg-gray-600">✎</button>
-        <button onclick="deleteTask('${t.id}','${escAttr(t.name)}')" title="Delete" class="px-2 py-1 text-xs rounded bg-red-900 hover:bg-red-800 text-red-300">🗑</button>
+          class="px-2.5 py-1.5 text-xs rounded-md shadow-sm border transition-colors ${inactive?'bg-gray-50 text-gray-400 border-gray-200 cursor-not-allowed':'bg-white text-gray-700 border-gray-300 hover:bg-gray-50 hover:text-orange-500 hover:border-orange-200'}">▶</button>
+        <button onclick="openTaskModal('${t.id}')" title="Edit" class="px-2.5 py-1.5 text-xs rounded-md shadow-sm border bg-white text-gray-700 border-gray-300 hover:bg-gray-50 hover:text-blue-500 hover:border-blue-200 transition-colors">✎</button>
+        <button onclick="deleteTask('${t.id}','${escAttr(t.name)}')" title="Delete" class="px-2.5 py-1.5 text-xs rounded-md shadow-sm border bg-red-50 text-red-600 border-red-200 hover:bg-red-100 hover:border-red-300 transition-colors">🗑</button>
       </div>
     </td>
   </tr>`;
@@ -603,16 +708,16 @@ function renderBin(){
   const ba=binTasks.filter(t=>t.type==='APPLICATION'&&(!as||t.name.toLowerCase().includes(as)||t.target.toLowerCase().includes(as)));
 
   const mkRows=(list,cols)=>list.length?list.map(t=>`
-    <tr class="border-t border-gray-800">
-      <td class="px-4 py-2">${escHtml(t.name)}</td>
-      <td class="px-4 py-2 font-mono text-xs text-gray-500">${escHtml(t.target)}</td>
-      <td class="px-4 py-2 text-xs text-gray-500">${toIST(t.deleted_at)}</td>
-      <td class="px-4 py-2 text-right">
-        <button onclick="restoreTask('${t.id}')" class="px-2 py-1 text-xs rounded bg-green-800 hover:bg-green-700 text-green-300 mr-1">Restore</button>
-        <button onclick="hardDelete('${t.id}','${escAttr(t.name)}')" class="px-2 py-1 text-xs rounded bg-red-900 hover:bg-red-800 text-red-300">Delete Forever</button>
+    <tr class="hover:bg-gray-50">
+      <td class="px-5 py-3 font-bold text-gray-800">${escHtml(t.name)}</td>
+      <td class="px-5 py-3 font-mono text-xs text-gray-500">${escHtml(t.target)}</td>
+      <td class="px-5 py-3 text-xs text-gray-500 font-medium">${toIST(t.deleted_at)}</td>
+      <td class="px-5 py-3 text-right">
+        <button onclick="restoreTask('${t.id}')" class="px-3 py-1.5 text-xs font-bold rounded-md bg-white border border-gray-300 text-green-700 hover:bg-green-50 shadow-sm mr-2 transition-colors">Restore</button>
+        <button onclick="hardDelete('${t.id}','${escAttr(t.name)}')" class="px-3 py-1.5 text-xs font-bold rounded-md bg-red-50 border border-red-200 text-red-700 hover:bg-red-100 shadow-sm transition-colors">Delete Forever</button>
       </td>
     </tr>`).join('')
-    :`<tr><td colspan="${cols}" class="px-4 py-8 text-center text-gray-600">Bin is empty.</td></tr>`;
+    :`<tr><td colspan="${cols}" class="px-5 py-10 text-center text-gray-500">Bin is empty.</td></tr>`;
 
   document.getElementById('binPingBody').innerHTML=mkRows(bp,4);
   document.getElementById('binAppBody').innerHTML =mkRows(ba,4);
@@ -645,11 +750,11 @@ function openTaskModal(id){
       document.getElementById('fL2').value      =t.email_l2||'';
       document.getElementById('fL3').value      =t.email_l3||'';
       document.getElementById('fEmailEnabled').checked=t.email_enabled!==false&&t.email_enabled!==0;
-      // Host mapping
+      
       document.getElementById('fHmEnabled').checked   =!!t.host_mapping_enabled;
       document.getElementById('fHmHostname').value    =t.host_mapping_hostname||'';
       document.getElementById('fHmIp').value          =t.host_mapping_ip||'';
-      // URL rows
+      
       document.getElementById('urlList').innerHTML='';
       if(t.type==='APPLICATION'&&t.urls){
         let parsed=[]; try{parsed=JSON.parse(t.urls);}catch{}
@@ -686,7 +791,7 @@ function onTypeChange(){
 }
 
 function onEmailToggle(){
-  document.getElementById('emailFields').style.opacity=document.getElementById('fEmailEnabled').checked?'':'0.4';
+  document.getElementById('emailFields').style.opacity=document.getElementById('fEmailEnabled').checked?'1':'0.4';
 }
 
 function onHmToggle(){
@@ -701,7 +806,6 @@ function updateHmPreview(){
   document.getElementById('hmPreviewHostname').textContent=hn;
   document.getElementById('hmPreviewIp').textContent=ip;
 }
-// live preview update
 ['fHmHostname','fHmIp'].forEach(id=>{
   document.getElementById(id)?.addEventListener('input', updateHmPreview);
 });
@@ -712,34 +816,32 @@ function addUrlRow(data={}){
   const id=++urlRowId;
   const row=document.createElement('div');
   row.id='urlRow'+id;
-  row.className='rounded-lg border border-gray-700 p-3';
-  row.style.background='#0d1117';
+  row.className='rounded-xl border border-gray-200 p-4 bg-gray-50 shadow-sm';
   row.innerHTML=`
-    <div class="flex gap-2 items-start">
-      <div class="flex-1 space-y-2">
+    <div class="flex gap-3 items-start">
+      <div class="flex-1 space-y-3">
         <input placeholder="http://hostname:port/path  or  http://192.168.x.x:port/path"
           value="${escAttr(data.url||'')}"
-          class="url-input w-full px-3 py-2 rounded-lg text-xs border border-gray-700"
-          style="background:#161b22;color:#f0f6fc;">
-        <div class="flex gap-2">
+          class="url-input w-full px-4 py-2.5 rounded-lg text-sm border border-gray-300 bg-white focus:outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20 font-mono transition-all">
+        <div class="flex gap-3">
           <div class="flex-1">
-            <label class="text-xs text-gray-600">Expected HTTP status (optional, e.g. 200)</label>
+            <label class="text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1 block">Expected HTTP status (opt)</label>
             <input placeholder="200" value="${escAttr(data.expected_status?String(data.expected_status):'')}"
               type="number" min="100" max="599"
-              class="url-status w-full mt-0.5 px-2 py-1.5 rounded text-xs border border-gray-700"
-              style="background:#161b22;color:#f0f6fc;">
+              class="url-status w-full px-3 py-2 rounded-lg text-sm border border-gray-300 bg-white focus:outline-none focus:border-orange-500">
           </div>
-          <div class="w-28">
-            <label class="text-xs text-gray-600">Timeout sec (opt)</label>
+          <div class="w-32">
+            <label class="text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1 block">Timeout sec (opt)</label>
             <input placeholder="15" value="${escAttr(data.timeout_sec?String(data.timeout_sec):'')}"
               type="number" min="1" max="120"
-              class="url-timeout w-full mt-0.5 px-2 py-1.5 rounded text-xs border border-gray-700"
-              style="background:#161b22;color:#f0f6fc;">
+              class="url-timeout w-full px-3 py-2 rounded-lg text-sm border border-gray-300 bg-white focus:outline-none focus:border-orange-500">
           </div>
         </div>
       </div>
       <button type="button" onclick="document.getElementById('urlRow${id}').remove()"
-        class="mt-2 text-red-500 hover:text-red-300 text-lg leading-none shrink-0">×</button>
+        class="mt-1 w-8 h-8 flex items-center justify-center rounded-full bg-red-50 text-red-500 hover:bg-red-100 hover:text-red-700 transition-colors shrink-0">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+      </button>
     </div>`;
   document.getElementById('urlList').appendChild(row);
 }
@@ -782,7 +884,7 @@ async function testBeforeSave(){
   const urls=type==='APPLICATION'?collectUrls():null;
   const hmEnabled=document.getElementById('fHmEnabled').checked;
   const res=document.getElementById('testResult');
-  res.innerHTML='<span class="text-gray-400">Testing…</span>';
+  res.innerHTML='<span class="text-gray-500 flex items-center gap-2"><svg class="w-4 h-4 animate-spin text-orange-500" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> Testing connection…</span>';
   try{
     const data=await API.testTask({
       type, target,
@@ -792,17 +894,20 @@ async function testBeforeSave(){
       host_mapping_ip:       document.getElementById('fHmIp').value.trim(),
     });
     const ok=data.result==='PASS';
-    res.innerHTML=`<span class="${ok?'text-green-400':'text-red-400'}">${ok?'✔':'✗'} ${data.result}</span>`
-      +(data.responseMs?` — ${data.responseMs}ms`:'')
-      +(data.errorRaw?`<pre class="text-xs text-red-300 mt-1 p-2 rounded" style="background:#0a0e14">${escHtml(data.errorRaw)}</pre>`:'');
+    res.innerHTML=`<span class="px-2 py-1 rounded-md font-bold text-xs ${ok?'bg-green-100 text-green-700':'bg-red-100 text-red-700'}">${ok?'✔':'✗'} ${data.result}</span>`
+      +(data.responseMs?`<span class="text-gray-500 ml-2 text-sm">${data.responseMs}ms</span>`:'')
+      +(data.errorRaw?`<pre class="text-xs text-red-800 bg-red-50 mt-2 p-3 rounded-lg border border-red-200">${escHtml(data.errorRaw)}</pre>`:'');
     if(data.endpointResults?.length){
-      res.innerHTML+='<div class="mt-2 space-y-1">'+data.endpointResults.map(ep=>
-        `<div class="text-xs ${ep.result==='PASS'?'text-green-400':'text-red-400'}">
-          ${ep.result} — ${escHtml(ep.url)} ${ep.httpStatus?'HTTP '+ep.httpStatus:''} ${ep.responseMs?ep.responseMs+'ms':''}
-          ${ep.errorRaw?'<br><span class="text-red-300 text-xs">'+escHtml(ep.errorRaw)+'</span>':''}
+      res.innerHTML+='<div class="mt-3 space-y-1.5 border-t border-gray-100 pt-3">'+data.endpointResults.map(ep=>
+        `<div class="text-xs bg-gray-50 p-2 rounded border border-gray-200">
+          <span class="font-bold px-1.5 py-0.5 rounded ${ep.result==='PASS'?'bg-green-100 text-green-700':'bg-red-100 text-red-700'}">${ep.result}</span>
+          <span class="font-mono text-gray-700 ml-1">${escHtml(ep.url)}</span>
+          ${ep.httpStatus?`<span class="text-gray-500 ml-1">HTTP ${ep.httpStatus}</span>`:''}
+          ${ep.responseMs?`<span class="text-gray-500 ml-1">${ep.responseMs}ms</span>`:''}
+          ${ep.errorRaw?'<div class="text-red-600 mt-1 bg-red-50 px-2 py-1 rounded">'+escHtml(ep.errorRaw)+'</div>':''}
         </div>`).join('')+'</div>';
     }
-  }catch(e){ res.innerHTML=`<span class="text-red-400">Test error: ${escHtml(e.message)}</span>`; }
+  }catch(e){ res.innerHTML=`<span class="text-red-600 font-bold bg-red-50 px-3 py-1.5 rounded-lg border border-red-200">Test error: ${escHtml(e.message)}</span>`; }
 }
 
 async function saveTask(){
@@ -844,88 +949,90 @@ async function saveTask(){
 // ── Task Detail Modal ──────────────────────────────────────────────────────────
 async function openDetail(id){
   document.getElementById('detailModal').classList.remove('hidden');
-  document.getElementById('dtTitle').textContent='…';
-  document.getElementById('dtBody').innerHTML='<div class="text-gray-500">Loading…</div>';
+  document.getElementById('dtTitle').textContent='Loading Details…';
+  document.getElementById('dtBody').innerHTML='<div class="text-gray-500 flex items-center gap-2"><svg class="w-5 h-5 animate-spin text-orange-500" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> Fetching…</div>';
   try{
     const t=await API.task(id);
     document.getElementById('dtTitle').textContent=t.name;
 
     const incHtml=t.incident?`
-      <div class="px-3 py-2 rounded-lg border border-red-800 bg-red-950/40">
-        <b class="text-red-300">⚠ FAULT</b> — Open since ${toIST(t.incident.t0)}
-        ${t.incident_duration?` (${t.incident_duration})`:''}
-        <div class="text-xs text-gray-500 mt-1 space-y-0.5">
-          <div>L1: ${t.incident.l1_sent_at?'✔ '+toIST(t.incident.l1_sent_at):'—'}</div>
-          <div>L2: ${t.incident.l2_sent_at?'✔ '+toIST(t.incident.l2_sent_at):'Pending at T0+48h'}</div>
-          <div>L3: ${t.incident.l3_sent_at?'✔ '+toIST(t.incident.l3_sent_at):'Repeats every 48h after L2'}</div>
+      <div class="px-4 py-3 rounded-xl border border-red-200 bg-red-50 shadow-sm">
+        <div class="text-red-700 font-bold mb-2 flex items-center gap-2"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg> Active Fault</div>
+        <div class="text-xs text-red-900/80 mb-2">Open since ${toIST(t.incident.t0)} ${t.incident_duration?` (${t.incident_duration})`:''}</div>
+        <div class="grid grid-cols-2 gap-2 text-xs text-red-800">
+          <div><span class="font-medium">L1 Alert:</span> ${t.incident.l1_sent_at?'Sent '+toIST(t.incident.l1_sent_at):'—'}</div>
+          <div><span class="font-medium">L2 Alert:</span> ${t.incident.l2_sent_at?'Sent '+toIST(t.incident.l2_sent_at):'Pending (T0+48h)'}</div>
+          <div class="col-span-2"><span class="font-medium">L3 Alert:</span> ${t.incident.l3_sent_at?'Sent '+toIST(t.incident.l3_sent_at):'Repeats 48h after L2'}</div>
         </div>
       </div>`
-      :`<div class="px-3 py-2 rounded-lg border border-green-800 bg-green-950/30 text-green-300">✔ No active incident</div>`;
+      :`<div class="px-4 py-2.5 rounded-xl border border-green-200 bg-green-50 text-green-700 font-bold text-sm flex items-center gap-2 shadow-sm"><div class="bg-green-200 text-green-700 rounded-full w-5 h-5 flex items-center justify-center"><svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path></svg></div> No active incidents</div>`;
 
-    // Host mapping info (APPLICATION only)
     const hmHtml=t.type==='APPLICATION'&&t.host_mapping_enabled?`
-      <div class="hm-box text-xs space-y-1">
-        <div class="text-blue-300 font-medium">🔗 Hostname Mapping Active</div>
-        <div>Hostname: <code class="text-blue-200">${escHtml(t.host_mapping_hostname)}</code></div>
-        <div>Mapped IP: <code class="text-green-300">${escHtml(t.host_mapping_ip)}</code></div>
-        <div class="text-gray-500">TCP connects to ${escHtml(t.host_mapping_ip)} — Host header uses ${escHtml(t.host_mapping_hostname)}</div>
+      <div class="bg-blue-50 border border-blue-100 rounded-xl p-4 text-xs space-y-1.5 shadow-sm">
+        <div class="text-blue-700 font-bold text-sm mb-2 flex items-center gap-1.5"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"></path></svg> Hostname Mapping Active</div>
+        <div><span class="font-medium text-gray-600">Hostname:</span> <code class="text-blue-700 bg-white px-1.5 py-0.5 rounded border border-blue-200 font-mono">${escHtml(t.host_mapping_hostname)}</code></div>
+        <div><span class="font-medium text-gray-600">Mapped IP:</span> <code class="text-green-700 bg-white px-1.5 py-0.5 rounded border border-green-200 font-mono">${escHtml(t.host_mapping_ip)}</code></div>
+        <div class="text-gray-500 pt-1">TCP connects to ${escHtml(t.host_mapping_ip)} — Host header uses ${escHtml(t.host_mapping_hostname)}</div>
       </div>`
-      :(t.type==='APPLICATION'?'<div class="text-xs text-gray-600">Hostname mapping: not enabled (using direct IP or DNS)</div>':'');
+      :(t.type==='APPLICATION'?'<div class="text-xs text-gray-500 font-medium">Hostname mapping: not enabled (using direct IP or DNS)</div>':'');
 
     const epHtml=t.type==='APPLICATION'&&t.last_endpoint_results?`
       <div>
-        <div class="text-xs text-gray-500 uppercase mb-2">Endpoint Results</div>
-        ${t.last_endpoint_results.map(ep=>`
-          <div class="flex items-start gap-2 text-xs px-2 py-1 rounded mb-1 ${ep.result==='FAIL'?'bg-red-950/30':''}">
-            <span class="${ep.result==='PASS'?'text-green-400':'text-red-400'} w-8 font-bold shrink-0">${ep.result}</span>
-            <div class="flex-1 min-w-0">
-              <div class="font-mono text-blue-300 truncate">${escHtml(ep.url)}</div>
-              ${ep.httpStatus?`<div class="text-gray-500">HTTP ${ep.httpStatus}${ep.responseMs?' — '+ep.responseMs+'ms':''}</div>`:''}
-              ${ep.errorRaw?`<div class="text-red-300 mt-0.5 break-all">${escHtml(ep.errorRaw)}</div>`:''}
-            </div>
-          </div>`).join('')}
+        <div class="text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-2">Endpoint Results</div>
+        <div class="rounded-xl border border-gray-200 bg-white overflow-hidden shadow-sm">
+          ${t.last_endpoint_results.map(ep=>`
+            <div class="flex items-start gap-3 text-sm px-4 py-2.5 border-b border-gray-100 last:border-0 ${ep.result==='FAIL'?'bg-red-50':''}">
+              <span class="px-2 py-0.5 rounded font-bold text-xs shrink-0 ${ep.result==='PASS'?'bg-green-100 text-green-700':'bg-red-100 text-red-700'}">${ep.result}</span>
+              <div class="flex-1 min-w-0">
+                <div class="font-mono text-gray-700 truncate text-xs font-medium">${escHtml(ep.url)}</div>
+                ${ep.httpStatus?`<div class="text-gray-500 text-xs mt-0.5">HTTP ${ep.httpStatus}${ep.responseMs?' — '+ep.responseMs+'ms':''}</div>`:''}
+                ${ep.errorRaw?`<div class="text-red-700 text-xs mt-1 bg-red-100 px-2 py-1 rounded break-all">${escHtml(ep.errorRaw)}</div>`:''}
+              </div>
+            </div>`).join('')}
+        </div>
       </div>`:''
 
     const errHtml=t.last_error_raw?`
       <div>
-        <div class="text-xs text-gray-500 uppercase mb-1">Raw Error</div>
-        <pre class="text-xs text-red-300 rounded p-3" style="background:#0d1117;border-left:3px solid #ef4444">${escHtml(t.last_error_raw)}</pre>
+        <div class="text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-2">Raw Error</div>
+        <pre class="text-xs text-red-800 rounded-xl p-4 shadow-sm" style="background:#fef2f2;border-left:4px solid #ef4444">${escHtml(t.last_error_raw)}</pre>
       </div>`:'';
 
-    const checks=t.checks?.slice(0,15).map(c=>`
-      <div class="flex items-center gap-2 text-xs px-2 py-1 border-b border-gray-800 last:border-0">
-        <span class="${c.result==='PASS'?'text-green-400':'text-red-400'} w-8 font-bold">${c.result}</span>
-        <span class="text-gray-500">${toIST(c.checked_at)}</span>
-        ${c.response_ms?`<span class="text-gray-600 ml-auto">${c.response_ms}ms`:''}
-      </div>`).join('')||'<div class="text-xs text-gray-600 px-2 py-1">No checks yet</div>';
+    const checks=t.checks?.slice(0,10).map(c=>`
+      <div class="flex items-center gap-4 text-sm px-4 py-2.5 border-b border-gray-100 last:border-0 hover:bg-gray-50 transition-colors">
+        <span class="px-2 py-0.5 rounded font-bold text-xs w-12 text-center ${c.result==='PASS'?'bg-green-100 text-green-700':'bg-red-100 text-red-700'}">${c.result}</span>
+        <span class="text-gray-600 font-medium">${toIST(c.checked_at)}</span>
+        ${c.response_ms!=null?`<span class="text-gray-500 text-xs ml-auto bg-gray-100 px-2 py-1 rounded-md border border-gray-200">${c.response_ms}ms</span>`:''}
+      </div>`).join('')||'<div class="text-sm text-gray-500 px-4 py-4 text-center">No checks yet</div>';
 
     document.getElementById('dtBody').innerHTML=`
-      <div class="grid grid-cols-2 gap-2 text-xs text-gray-400">
-        <div>Type: <b class="text-white">${t.type}</b></div>
-        <div>Target: <b class="text-blue-300 font-mono">${escHtml(t.target)}</b></div>
-        <div>Interval: <b class="text-white">${t.interval_min}m</b></div>
-        <div>N Threshold: <b class="text-white">${t.n_threshold}</b></div>
-        <div>Last Check: <b class="text-white">${toIST(t.last_checked)}</b></div>
+      <div class="grid grid-cols-2 gap-y-3 gap-x-4 text-sm text-gray-500 bg-gray-50 p-4 rounded-xl border border-gray-200">
+        <div>Type: <b class="text-gray-900">${t.type}</b></div>
+        <div>Target: <b class="text-orange-600 font-mono">${escHtml(t.target)}</b></div>
+        <div>Interval: <b class="text-gray-900">${t.interval_min}m</b></div>
+        <div>N Threshold: <b class="text-gray-900">${t.n_threshold}</b></div>
+        <div class="col-span-2">Last Check: <b class="text-gray-900">${toIST(t.last_checked)}</b></div>
       </div>
       ${hmHtml}
       ${incHtml}
       ${epHtml}
       ${errHtml}
-      <div class="text-xs text-gray-500 space-y-0.5">
-        <div>Email: <b class="${t.email_enabled?'text-green-400':'text-gray-600'}">${t.email_enabled?'Enabled':'Disabled'}</b></div>
-        ${t.email_l1?`<div>L1: <span class="text-blue-300">${escHtml(t.email_l1)}</span></div>`:''}
-        ${t.email_l2?`<div>L2: <span class="text-blue-300">${escHtml(t.email_l2)}</span></div>`:''}
-        ${t.email_l3?`<div>L3: <span class="text-blue-300">${escHtml(t.email_l3)}</span></div>`:''}
+      <div class="text-sm text-gray-600 space-y-1.5 p-4 rounded-xl border border-gray-200 bg-white">
+        <div class="font-bold text-[11px] uppercase tracking-wider text-gray-500 mb-2">Notification Settings</div>
+        <div>Email Alerts: <b class="px-2 py-0.5 rounded text-xs ${t.email_enabled?'bg-green-100 text-green-700':'bg-gray-100 text-gray-500'}">${t.email_enabled?'Enabled':'Disabled'}</b></div>
+        ${t.email_l1?`<div><span class="font-medium text-gray-500">L1:</span> <span class="text-gray-900">${escHtml(t.email_l1)}</span></div>`:''}
+        ${t.email_l2?`<div><span class="font-medium text-gray-500">L2:</span> <span class="text-gray-900">${escHtml(t.email_l2)}</span></div>`:''}
+        ${t.email_l3?`<div><span class="font-medium text-gray-500">L3:</span> <span class="text-gray-900">${escHtml(t.email_l3)}</span></div>`:''}
       </div>
       <div>
-        <div class="text-xs text-gray-500 uppercase mb-1">Recent Checks</div>
-        <div class="rounded-lg overflow-hidden" style="background:#0d1117">${checks}</div>
+        <div class="text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-2">Recent Checks</div>
+        <div class="rounded-xl border border-gray-200 bg-white overflow-hidden shadow-sm">${checks}</div>
       </div>
-      <div class="flex gap-2">
-        <button onclick="runTask('${t.id}')" class="px-3 py-2 text-sm rounded-lg bg-gray-700 hover:bg-gray-600 transition">▶ Run Now</button>
-        <button onclick="closeDetailModal();openTaskModal('${t.id}')" class="px-3 py-2 text-sm rounded-lg bg-gray-700 hover:bg-gray-600 transition">✎ Edit</button>
+      <div class="flex gap-3 pt-2">
+        <button onclick="runTask('${t.id}')" class="px-4 py-2.5 text-sm font-bold rounded-xl border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 hover:text-orange-500 transition-colors shadow-sm">▶ Run Now</button>
+        <button onclick="closeDetailModal();openTaskModal('${t.id}')" class="flex-1 px-4 py-2.5 text-sm font-bold rounded-xl bg-gray-800 text-white hover:bg-gray-900 transition-colors shadow-sm text-center">✎ Edit Task</button>
       </div>`;
-  }catch(e){ document.getElementById('dtBody').innerHTML=`<div class="text-red-400">Failed: ${escHtml(e.message)}</div>`; }
+  }catch(e){ document.getElementById('dtBody').innerHTML=`<div class="text-red-600 bg-red-50 p-4 rounded-xl border border-red-200 text-sm font-medium">Failed to load details: ${escHtml(e.message)}</div>`; }
 }
 function closeDetailModal(){ document.getElementById('detailModal').classList.add('hidden'); }
 
@@ -937,19 +1044,19 @@ async function doImportPreview(input){
   const file=input.files[0]; if(!file) return; input.value='';
   const panel=document.getElementById('importPreviewPanel');
   panel.classList.remove('hidden');
-  document.getElementById('importResult').innerHTML='<span class="text-gray-400">Parsing file…</span>';
+  document.getElementById('importResult').innerHTML='<span class="text-gray-500 flex items-center gap-2"><svg class="w-4 h-4 animate-spin text-orange-500" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> Parsing file…</span>';
   document.getElementById('importErrors').classList.add('hidden');
   try{
     const data=await API.importPreview(file);
     importSessionId=data.session_id;
     document.getElementById('prevPing').innerHTML=
-      `<div>Insert: <b class="text-green-400">${data.ping.to_insert}</b></div>
-       <div>Update: <b class="text-yellow-400">${data.ping.to_update}</b></div>
-       <div>Invalid: <b class="text-red-400">${data.ping.invalid}</b></div>`;
+      `<div>Insert: <b class="text-green-600">${data.ping.to_insert}</b></div>
+       <div>Update: <b class="text-orange-500">${data.ping.to_update}</b></div>
+       <div>Invalid: <b class="text-red-600">${data.ping.invalid}</b></div>`;
     document.getElementById('prevApp').innerHTML=
-      `<div>Insert: <b class="text-green-400">${data.application.to_insert}</b></div>
-       <div>Update: <b class="text-yellow-400">${data.application.to_update}</b></div>
-       <div>Invalid: <b class="text-red-400">${data.application.invalid}</b></div>`;
+      `<div>Insert: <b class="text-green-600">${data.application.to_insert}</b></div>
+       <div>Update: <b class="text-orange-500">${data.application.to_update}</b></div>
+       <div>Invalid: <b class="text-red-600">${data.application.invalid}</b></div>`;
     const allErrors=[
       ...data.ping.errors.map(e=>`Ping row ${e.row} "${e.name}": ${e.errors.join(', ')}`),
       ...data.application.errors.map(e=>`App row ${e.row} "${e.name}": ${e.errors.join(', ')}`),
@@ -957,16 +1064,16 @@ async function doImportPreview(input){
     if(allErrors.length){
       const ed=document.getElementById('importErrors');
       ed.classList.remove('hidden');
-      ed.innerHTML='<b class="text-red-400">Validation Errors:</b><ul class="mt-1 space-y-0.5 list-disc list-inside">'+
+      ed.innerHTML='<b class="text-red-700 block mb-2">Validation Errors:</b><ul class="space-y-1 list-disc list-inside">'+
         allErrors.map(e=>`<li>${escHtml(e)}</li>`).join('')+'</ul>';
     }
     const total=data.totals.to_insert+data.totals.to_update;
     document.getElementById('importResult').innerHTML=total>0
-      ?`<span class="text-blue-300">Preview ready: ${data.totals.to_insert} to insert, ${data.totals.to_update} to update. Choose an action above.</span>`
-      :`<span class="text-yellow-400">Nothing to import (0 valid records). Check your file.</span>`;
+      ?`<span class="text-blue-700 bg-blue-50 px-3 py-1.5 rounded-lg border border-blue-200">Preview ready: ${data.totals.to_insert} to insert, ${data.totals.to_update} to update. Choose an action above.</span>`
+      :`<span class="text-orange-700 bg-orange-50 px-3 py-1.5 rounded-lg border border-orange-200">Nothing to import (0 valid records). Check your file.</span>`;
     document.getElementById('importExpiry').textContent='Session expires: '+data.expires_at_ist;
   }catch(e){
-    document.getElementById('importResult').innerHTML=`<span class="text-red-400">Preview failed: ${escHtml(e.message)}</span>`;
+    document.getElementById('importResult').innerHTML=`<span class="text-red-600 font-bold bg-red-50 px-3 py-1.5 rounded-lg border border-red-200">Preview failed: ${escHtml(e.message)}</span>`;
   }
 }
 
@@ -977,16 +1084,16 @@ async function doImportApply(action){
     document.getElementById('importPreviewPanel').classList.add('hidden');
     document.getElementById('importFile').value=''; importSessionId=null; return;
   }
-  if(!importSessionId){ res.innerHTML='<span class="text-red-400">No session. Re-upload the file.</span>'; return; }
+  if(!importSessionId){ res.innerHTML='<span class="text-red-600 font-bold">No session. Re-upload the file.</span>'; return; }
   const labels={insert_only:'Insert new only',update_only:'Update existing only',insert_and_update:'Insert + update all'};
   if(!confirm(`Confirm: ${labels[action]}?\n\nThis will apply changes to the database.`)) return;
-  res.innerHTML='<span class="text-gray-400">Applying…</span>';
+  res.innerHTML='<span class="text-gray-500 flex items-center gap-2"><svg class="w-4 h-4 animate-spin text-orange-500" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> Applying changes…</span>';
   try{
     const data=await API.importApply(importSessionId,action);
-    res.innerHTML=`<span class="text-green-400">✔ Import complete: ${data.inserted} inserted, ${data.updated} updated</span>`
-      +(data.errors?.length?`<br><span class="text-red-400">Errors: ${data.errors.map(escHtml).join('; ')}</span>`:'');
+    res.innerHTML=`<span class="text-green-700 font-bold bg-green-50 px-3 py-1.5 rounded-lg border border-green-200">✔ Import complete: ${data.inserted} inserted, ${data.updated} updated</span>`
+      +(data.errors?.length?`<div class="text-red-700 bg-red-50 mt-3 p-3 rounded-lg border border-red-200">Errors: ${data.errors.map(escHtml).join('; ')}</div>`:'');
     importSessionId=null; loadTasks();
-  }catch(e){ res.innerHTML=`<span class="text-red-400">Apply failed: ${escHtml(e.message)}</span>`; }
+  }catch(e){ res.innerHTML=`<span class="text-red-600 font-bold bg-red-50 px-3 py-1.5 rounded-lg border border-red-200">Apply failed: ${escHtml(e.message)}</span>`; }
 }
 
 // ── Logs ───────────────────────────────────────────────────────────────────────
@@ -999,7 +1106,7 @@ async function _fetchTaskLogs(){
   const data=await API.logs(q).catch(()=>({logs:[],total:0,totalPages:1}));
   document.getElementById('taskLogsBody').innerHTML=data.logs.length
     ?data.logs.map(l=>logRow(l)).join('')
-    :'<tr><td colspan="5" class="px-4 py-6 text-center text-gray-600">No task logs</td></tr>';
+    :'<tr><td colspan="5" class="px-5 py-10 text-center text-gray-500">No task logs found</td></tr>';
   document.getElementById('taskLogPageLabel').textContent=`Page ${taskLogPage+1}/${data.totalPages||1} (${data.total})`;
 }
 function changeTaskLogPage(d){ taskLogPage=Math.max(0,taskLogPage+d); _fetchTaskLogs(); }
@@ -1009,12 +1116,12 @@ async function _fetchAdminLogs(){
   const q={group:'ADMIN_LOGS',level:document.getElementById('adminLogLevel').value,page:adminLogPage};
   const data=await API.logs(q).catch(()=>({logs:[],total:0,totalPages:1}));
   document.getElementById('adminLogsBody').innerHTML=data.logs.length
-    ?data.logs.map(l=>`<tr class="border-t border-gray-800 hover:bg-gray-800/30 ${logRowBg(l.level)}">
-        <td class="px-3 py-2 text-gray-500 whitespace-nowrap">${toIST(l.created_at)}</td>
-        <td class="px-3 py-2 font-bold ${logLevelColor(l.level)}">${l.level}</td>
-        <td class="px-3 py-2 text-gray-400">${escHtml(l.actor||'')}</td>
-        <td class="px-3 py-2 text-gray-300">${escHtml(l.message)}</td></tr>`).join('')
-    :'<tr><td colspan="4" class="px-4 py-6 text-center text-gray-600">No admin logs</td></tr>';
+    ?data.logs.map(l=>`<tr class="border-b border-gray-100 hover:bg-gray-50 transition-colors ${logRowBg(l.level)}">
+        <td class="px-5 py-3 text-gray-500 whitespace-nowrap text-xs font-medium">${toIST(l.created_at)}</td>
+        <td class="px-5 py-3 font-bold text-xs"><span class="${logLevelColor(l.level)}">${l.level}</span></td>
+        <td class="px-5 py-3 text-gray-800 font-medium">${escHtml(l.actor||'')}</td>
+        <td class="px-5 py-3 text-gray-700">${escHtml(l.message)}</td></tr>`).join('')
+    :'<tr><td colspan="4" class="px-5 py-10 text-center text-gray-500">No admin logs found</td></tr>';
   document.getElementById('adminLogPageLabel').textContent=`Page ${adminLogPage+1}/${data.totalPages||1} (${data.total})`;
 }
 function changeAdminLogPage(d){ adminLogPage=Math.max(0,adminLogPage+d); _fetchAdminLogs(); }
@@ -1023,30 +1130,31 @@ async function loadAuditLogs(){ auditLogPage=0; await _fetchAuditLogs(); }
 async function _fetchAuditLogs(){
   const data=await API.audit({page:auditLogPage}).catch(()=>({logs:[],total:0,totalPages:1}));
   document.getElementById('auditLogsBody').innerHTML=data.logs.length
-    ?data.logs.map(l=>`<tr class="border-t border-gray-800 hover:bg-gray-800/30">
-        <td class="px-3 py-2 text-gray-500 whitespace-nowrap">${toIST(l.created_at)}</td>
-        <td class="px-3 py-2 text-blue-400 font-medium">${escHtml(l.actor||'')}</td>
-        <td class="px-3 py-2 text-gray-300">${escHtml(l.action||'')}</td>
-        <td class="px-3 py-2 text-gray-500 text-xs">${escHtml(l.detail||'')}</td></tr>`).join('')
-    :'<tr><td colspan="4" class="px-4 py-6 text-center text-gray-600">No audit entries</td></tr>';
+    ?data.logs.map(l=>`<tr class="border-b border-gray-100 hover:bg-gray-50 transition-colors">
+        <td class="px-5 py-3 text-gray-500 whitespace-nowrap text-xs font-medium">${toIST(l.created_at)}</td>
+        <td class="px-5 py-3 text-gray-800 font-bold">${escHtml(l.actor||'')}</td>
+        <td class="px-5 py-3 text-gray-900 font-medium">${escHtml(l.action||'')}</td>
+        <td class="px-5 py-3 text-gray-500 text-xs">${escHtml(l.detail||'')}</td></tr>`).join('')
+    :'<tr><td colspan="4" class="px-5 py-10 text-center text-gray-500">No audit entries found</td></tr>';
   document.getElementById('auditLogPageLabel').textContent=`Page ${auditLogPage+1}/${data.totalPages||1} (${data.total})`;
 }
 function changeAuditLogPage(d){ auditLogPage=Math.max(0,auditLogPage+d); _fetchAuditLogs(); }
 
-function logLevelColor(l){ return l==='ERROR'?'text-red-400':l==='WARN'?'text-yellow-400':'text-green-400'; }
-function logRowBg(l){ return l==='ERROR'?'bg-red-950/20':l==='WARN'?'bg-yellow-950/10':''; }
+function logLevelColor(l){ return l==='ERROR'?'text-red-600 bg-red-100 px-2 py-0.5 rounded':l==='WARN'?'text-orange-600 bg-orange-100 px-2 py-0.5 rounded':'text-green-700 bg-green-100 px-2 py-0.5 rounded'; }
+function logRowBg(l){ return l==='ERROR'?'bg-red-50':l==='WARN'?'bg-orange-50':''; }
 function logRow(l){
-  return `<tr class="border-t border-gray-800 hover:bg-gray-800/30 cursor-pointer ${logRowBg(l.level)}"
+  return `<tr class="border-b border-gray-100 hover:bg-gray-50 cursor-pointer transition-colors ${logRowBg(l.level)}"
       onclick="this.nextElementSibling.classList.toggle('hidden')">
-    <td class="px-3 py-2 text-gray-500 whitespace-nowrap text-xs">${toIST(l.created_at)}</td>
-    <td class="px-3 py-2 font-bold ${logLevelColor(l.level)}">${l.level}</td>
-    <td class="px-3 py-2 text-gray-400">${escHtml(l.category)}</td>
-    <td class="px-3 py-2 text-blue-400 text-xs">${escHtml(l.task_name||'')}</td>
-    <td class="px-3 py-2 text-gray-300">${escHtml(l.message)}</td>
+    <td class="px-5 py-3 text-gray-500 whitespace-nowrap text-xs font-medium">${toIST(l.created_at)}</td>
+    <td class="px-5 py-3 font-bold text-xs"><span class="${logLevelColor(l.level)}">${l.level}</span></td>
+    <td class="px-5 py-3 text-gray-700 font-medium">${escHtml(l.category)}</td>
+    <td class="px-5 py-3 text-gray-900 font-bold text-sm">${escHtml(l.task_name||'')}</td>
+    <td class="px-5 py-3 text-gray-600">${escHtml(l.message)}</td>
   </tr>
-  <tr class="hidden border-t border-gray-900 bg-gray-900/40">
-    <td colspan="5" class="px-4 pb-2">
-      <pre class="text-xs text-gray-500 rounded p-2 mt-1" style="background:#0a0e14">${escHtml(l.detail||'(no detail)')}</pre>
+  <tr class="hidden border-b border-gray-200 bg-gray-50 shadow-inner">
+    <td colspan="5" class="px-5 py-4">
+      <div class="text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-2">Log Details</div>
+      <pre class="text-xs text-gray-700 rounded-lg p-3 bg-white border border-gray-200 overflow-x-auto">${escHtml(l.detail||'(no detail)')}</pre>
     </td>
   </tr>`;
 }
@@ -1060,12 +1168,12 @@ async function loadArchives(){
   const list=document.getElementById('archivesList');
   if(!data.archives.length){ list.textContent='No archives yet. Generated daily at 23:58 IST.'; return; }
   list.innerHTML=data.archives.map(a=>`
-    <div class="flex items-center gap-3 py-1 border-b border-gray-800 last:border-0">
-      <span class="text-gray-400 w-24">${escHtml(a.archive_date)}</span>
-      <span class="text-gray-500 w-24">${escHtml(a.category)}</span>
-      <span class="font-mono text-gray-400 flex-1 truncate">${escHtml(a.filename)}</span>
-      <span class="text-gray-600">${Math.round((a.size_bytes||0)/1024)}KB</span>
-      <a href="${API.base()}/api/logs/archives/${a.id}/download" class="text-blue-400 hover:text-blue-300" target="_blank">↓</a>
+    <div class="flex items-center gap-4 py-2.5 border-b border-gray-100 last:border-0 hover:bg-gray-50 transition-colors px-2 rounded-md">
+      <span class="text-gray-500 text-xs font-bold w-24">${escHtml(a.archive_date)}</span>
+      <span class="text-gray-500 text-xs uppercase font-bold w-24">${escHtml(a.category)}</span>
+      <span class="font-mono text-gray-700 text-sm flex-1 truncate">${escHtml(a.filename)}</span>
+      <span class="text-gray-500 text-xs font-medium bg-gray-100 px-2 py-1 rounded">${Math.round((a.size_bytes||0)/1024)} KB</span>
+      <a href="${API.base()}/api/logs/archives/${a.id}/download" class="text-orange-500 hover:text-orange-600 font-bold px-2 py-1 bg-orange-50 rounded hover:bg-orange-100 transition-colors" target="_blank">Download &rarr;</a>
     </div>`).join('');
 }
 
@@ -1074,34 +1182,36 @@ async function loadHealth(){
   try{
     const h=await API.health();
     document.getElementById('healthInfo').innerHTML=`
-      <div>Monitor Host: <b class="text-white">${h.monitorHost}</b></div>
-      <div>Timezone: <b class="text-white">${h.timezone||'Asia/Kolkata (IST)'}</b></div>
-      <div>Active Tasks: <b class="text-white">${h.activeTasks}</b>
-        <span class="${h.faultTasks>0?'text-red-400':'text-gray-600'}">(${h.faultTasks} FAULT)</span></div>
-      <div>Open Incidents: <b class="${h.openIncidents>0?'text-red-400':'text-green-400'}">${h.openIncidents}</b></div>
-      <div>DB Size: <b class="text-white">${h.dbSizeKb} KB</b></div>
-      <div>Uptime: <b class="text-white">${Math.floor(h.uptime/60)}m ${h.uptime%60}s</b></div>
-      <div class="pt-2 border-t border-gray-700 mt-2 space-y-1">
-        <div>Mail Binary: <b class="${h.mail?.binaryOk?'text-green-400':'text-red-400'}">${h.mail?.binaryOk?'✔':'✗'} ${h.mail?.binary||'—'}</b></div>
-        <div>Postfix: <b class="${h.mail?.postfix==='running'?'text-green-400':'text-yellow-400'}">${h.mail?.postfix||'—'}</b>
-          <span class="text-gray-600 text-xs ml-1">relay → ${h.mail?.relayHost}</span></div>
+      <div class="grid grid-cols-2 gap-y-3 gap-x-4 mb-4">
+        <div><span class="text-gray-500">Monitor Host:</span> <b class="text-gray-900">${h.monitorHost}</b></div>
+        <div><span class="text-gray-500">Timezone:</span> <b class="text-gray-900">${h.timezone||'Asia/Kolkata (IST)'}</b></div>
+        <div><span class="text-gray-500">Active Tasks:</span> <b class="text-gray-900">${h.activeTasks}</b>
+          <span class="${h.faultTasks>0?'text-red-600 font-bold bg-red-50 px-1.5 rounded':'text-gray-500'}">(${h.faultTasks} FAULT)</span></div>
+        <div><span class="text-gray-500">Open Incidents:</span> <b class="${h.openIncidents>0?'text-red-600 font-bold bg-red-50 px-1.5 rounded':'text-green-700 bg-green-50 px-1.5 rounded'}">${h.openIncidents}</b></div>
+        <div><span class="text-gray-500">DB Size:</span> <b class="text-gray-900">${h.dbSizeKb} KB</b></div>
+        <div><span class="text-gray-500">Uptime:</span> <b class="text-gray-900">${Math.floor(h.uptime/60)}m ${h.uptime%60}s</b></div>
       </div>
-      <div class="pt-2 border-t border-gray-700 mt-2 text-xs space-y-1">
-        <div>Archive Dir: <b class="${h.logs?.archiveDirOk?'text-green-400':'text-red-400'}">${h.logs?.archiveDirOk?'✔ ':'✗ '}${escHtml(h.logs?.archiveDir||'—')}</b></div>
-        <div>Log Retention: <b class="text-white">${h.logs?.retentionDays||15} days</b></div>
+      <div class="pt-3 border-t border-gray-100 space-y-2 text-sm">
+        <div class="flex items-center gap-2"><span class="text-gray-500 w-24">Mail Binary:</span> <b class="px-2 py-0.5 rounded text-xs ${h.mail?.binaryOk?'bg-green-100 text-green-700':'bg-red-100 text-red-700'}">${h.mail?.binaryOk?'✔':'✗'} ${h.mail?.binary||'—'}</b></div>
+        <div class="flex items-center gap-2"><span class="text-gray-500 w-24">Postfix:</span> <b class="px-2 py-0.5 rounded text-xs ${h.mail?.postfix==='running'?'bg-green-100 text-green-700':'bg-orange-100 text-orange-700'}">${h.mail?.postfix||'—'}</b>
+          <span class="text-gray-500 text-xs bg-gray-50 border border-gray-200 px-1.5 py-0.5 rounded ml-1">relay &rarr; ${h.mail?.relayHost}</span></div>
+      </div>
+      <div class="pt-3 border-t border-gray-100 mt-3 text-sm space-y-2">
+        <div class="flex items-center gap-2"><span class="text-gray-500 w-24">Archive Dir:</span> <b class="px-2 py-0.5 rounded text-xs font-mono ${h.logs?.archiveDirOk?'bg-green-100 text-green-700':'bg-red-100 text-red-700'}">${h.logs?.archiveDirOk?'✔ ':'✗ '}${escHtml(h.logs?.archiveDir||'—')}</b></div>
+        <div class="flex items-center gap-2"><span class="text-gray-500 w-24">Log Retention:</span> <b class="text-gray-900 bg-gray-100 px-2 py-0.5 rounded text-xs">${h.logs?.retentionDays||15} days</b></div>
       </div>`;
-  }catch{ document.getElementById('healthInfo').textContent='Failed to load health info'; }
+  }catch{ document.getElementById('healthInfo').innerHTML=`<span class="text-red-600 bg-red-50 px-3 py-1.5 rounded-lg border border-red-200 font-bold">Failed to load health info</span>`; }
 }
 
 async function sendTestMail(){
   const to=document.getElementById('testEmailAddr').value.trim();
   const res=document.getElementById('testMailResult');
-  if(!to){ res.innerHTML='<span class="text-red-400">Enter a recipient email</span>'; return; }
-  res.innerHTML='<span class="text-gray-400">Sending…</span>';
+  if(!to){ res.innerHTML='<span class="text-red-600">Enter a recipient email</span>'; return; }
+  res.innerHTML='<span class="text-gray-500 flex items-center gap-2"><svg class="w-4 h-4 animate-spin text-orange-500" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> Sending test email…</span>';
   try{
     await API.testMail(to);
-    res.innerHTML=`<span class="text-green-400">✔ Test mail sent to ${escHtml(to)}</span>`;
-  }catch(e){ res.innerHTML=`<span class="text-red-400">Failed: ${escHtml(e.message)}</span>`; }
+    res.innerHTML=`<span class="text-green-700 bg-green-50 px-3 py-1.5 rounded-lg border border-green-200 font-bold">✔ Test mail successfully sent to ${escHtml(to)}</span>`;
+  }catch(e){ res.innerHTML=`<span class="text-red-600 bg-red-50 px-3 py-1.5 rounded-lg border border-red-200 font-bold">Failed: ${escHtml(e.message)}</span>`; }
 }
 
 // ── Modal backdrops + Escape ────────────────────────────────────────────────────
