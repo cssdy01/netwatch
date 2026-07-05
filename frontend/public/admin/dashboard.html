@@ -70,6 +70,16 @@
       70% { box-shadow: 0 0 0 6px rgba(249, 115, 22, 0); border-color: rgba(249, 115, 22, 0.2); }
       100% { box-shadow: 0 0 0 0 rgba(249, 115, 22, 0); border-color: #fecaca; }
     }
+    
+    /* Toggle Switch */
+    .toggle-switch { position: relative; display: inline-block; width: 36px; height: 20px; vertical-align: middle; }
+    .toggle-switch input { opacity: 0; width: 0; height: 0; }
+    .toggle-slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #e2e8f0; transition: .3s; border-radius: 20px; }
+    .toggle-slider:before { position: absolute; content: ""; height: 16px; width: 16px; left: 2px; bottom: 2px; background-color: white; transition: .3s; border-radius: 50%; box-shadow: 0 1px 2px rgba(0,0,0,0.1); }
+    input:checked + .toggle-slider { background-color: #f97316; }
+    input:focus + .toggle-slider { box-shadow: 0 0 0 2px rgba(249, 115, 22, 0.2); }
+    input:checked + .toggle-slider:before { transform: translateX(16px); }
+    input:disabled + .toggle-slider { opacity: 0.5; cursor: not-allowed; }
   </style>
 </head>
 <body class="min-h-screen flex flex-col">
@@ -131,8 +141,8 @@
           <tr>
             <th class="px-5 py-3.5">Name</th><th class="px-5 py-3.5">Target</th>
             <th class="px-5 py-3.5">OS</th><th class="px-5 py-3.5">Int</th>
-            <th class="px-5 py-3.5">N</th><th class="px-5 py-3.5">Status</th>
-            <th class="px-5 py-3.5">Active</th><th class="px-5 py-3.5">Email</th>
+            <th class="px-5 py-3.5">N</th><th class="px-5 py-3.5">Health</th>
+            <th class="px-5 py-3.5">Status</th><th class="px-5 py-3.5">Email</th>
             <th class="px-5 py-3.5">Last Check (IST)</th><th class="px-5 py-3.5 text-right">Actions</th>
           </tr>
         </thead>
@@ -153,7 +163,7 @@
             <th class="px-5 py-3.5">Name</th><th class="px-5 py-3.5">Server IP</th>
             <th class="px-5 py-3.5">URLs</th><th class="px-5 py-3.5">Host Map</th>
             <th class="px-5 py-3.5">Int</th><th class="px-5 py-3.5">N</th>
-            <th class="px-5 py-3.5">Status</th><th class="px-5 py-3.5">Active</th>
+            <th class="px-5 py-3.5">Health</th><th class="px-5 py-3.5">Status</th>
             <th class="px-5 py-3.5">Email</th><th class="px-5 py-3.5">Last Check (IST)</th>
             <th class="px-5 py-3.5 text-right">Actions</th>
           </tr>
@@ -664,16 +674,29 @@ function taskRow(t,mode){
     <td class="px-5 py-3 text-gray-500 text-xs font-medium">${t.n_threshold}</td>
     <td class="px-5 py-3">${sb}</td>
     <td class="px-5 py-3" onclick="event.stopPropagation()">
-      <button onclick="toggleActive('${t.id}',event)" class="px-2.5 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider border shadow-sm transition-colors ${t.is_active?'bg-green-50 text-green-700 border-green-200 hover:bg-green-100':'bg-white text-gray-500 border-gray-200 hover:bg-gray-50'}">${t.is_active?'▶ ON':'⏸ OFF'}</button>
+      <div class="flex items-center gap-2">
+        <label class="toggle-switch">
+          <input type="checkbox" ${t.is_active?'checked':''} onchange="toggleActive('${t.id}',this)">
+          <span class="toggle-slider"></span>
+        </label>
+        <span class="text-[10px] font-bold uppercase tracking-wider ${t.is_active?'text-gray-900':'text-gray-400'}">${t.is_active?'Active':'Inactive'}</span>
+      </div>
     </td>
     <td class="px-5 py-3" onclick="event.stopPropagation()">
-      <button onclick="toggleEmail('${t.id}',event)" class="px-2.5 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider border shadow-sm transition-colors ${t.email_enabled?'bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100':'bg-white text-gray-500 border-gray-200 hover:bg-gray-50'}">${t.email_enabled?'✉ ON':'✉ OFF'}</button>
+      <div class="flex items-center gap-2">
+        <label class="toggle-switch">
+          <input type="checkbox" ${t.email_enabled?'checked':''} onchange="toggleEmail('${t.id}',this)">
+          <span class="toggle-slider"></span>
+        </label>
+      </div>
     </td>
     <td class="px-5 py-3 text-xs text-gray-500 font-medium">${t.last_checked?toIST(t.last_checked):'—'}</td>
     <td class="px-5 py-3 text-right" onclick="event.stopPropagation()">
       <div class="flex items-center justify-end gap-1.5">
-        <button onclick="runTask('${t.id}')" ${inactive?'disabled':''} title="Run now"
-          class="px-2.5 py-1.5 text-xs rounded-md shadow-sm border transition-colors ${inactive?'bg-gray-50 text-gray-400 border-gray-200 cursor-not-allowed':'bg-white text-gray-700 border-gray-300 hover:bg-gray-50 hover:text-orange-500 hover:border-orange-200'}">▶</button>
+        <button id="runBtn-${t.id}" onclick="runTask('${t.id}', this)" ${inactive?'disabled':''} title="Run now"
+          class="flex items-center justify-center gap-1 px-3 py-1.5 text-xs font-bold rounded-md shadow-sm border transition-all ${inactive?'bg-gray-50 text-gray-400 border-gray-200 cursor-not-allowed':'bg-orange-500 text-white border-orange-600 hover:bg-orange-600 active:scale-95'}">
+          ▶ Run
+        </button>
         <button onclick="openTaskModal('${t.id}')" title="Edit" class="px-2.5 py-1.5 text-xs rounded-md shadow-sm border bg-white text-gray-700 border-gray-300 hover:bg-gray-50 hover:text-blue-500 hover:border-blue-200 transition-colors">✎</button>
         <button onclick="deleteTask('${t.id}','${escAttr(t.name)}')" title="Delete" class="px-2.5 py-1.5 text-xs rounded-md shadow-sm border bg-red-50 text-red-600 border-red-200 hover:bg-red-100 hover:border-red-300 transition-colors">🗑</button>
       </div>
@@ -681,15 +704,45 @@ function taskRow(t,mode){
   </tr>`;
 }
 
-async function toggleActive(id,e){ e.stopPropagation(); await API.toggleActive(id); loadTasks(); }
-async function toggleEmail(id,e) { e.stopPropagation(); await API.toggleEmail(id);  loadTasks(); }
+async function toggleActive(id, checkbox){ 
+  checkbox.disabled = true;
+  try {
+    await API.toggleActive(id); 
+    loadTasks(); 
+  } catch (e) {
+    checkbox.checked = !checkbox.checked;
+    checkbox.disabled = false;
+    console.error('Toggle Active failed:', e);
+  }
+}
 
-async function runTask(id){
-  try{
-    const res=await API.runTask(id);
-    alert(`Run result: ${res.result}${res.errorRaw?'\n\n'+res.errorRaw:''}`);
-    loadTasks();
-  }catch(e){ alert('Run failed: '+e.message); }
+async function toggleEmail(id, checkbox){ 
+  checkbox.disabled = true;
+  try {
+    await API.toggleEmail(id);  
+    loadTasks(); 
+  } catch (e) {
+    checkbox.checked = !checkbox.checked;
+    checkbox.disabled = false;
+    console.error('Toggle Email failed:', e);
+  }
+}
+
+async function runTask(id, btnElement){
+  const originalHtml = btnElement.innerHTML;
+  btnElement.innerHTML = `<svg class="w-4 h-4 animate-spin text-current" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>`;
+  btnElement.disabled = true;
+  try {
+    await API.runTask(id);
+    await loadTasks(); // Reloads table and resets the button state naturally
+    if (!document.getElementById('detailModal').classList.contains('hidden')) {
+      openDetail(id); // Refreshes the modal with new history logs
+    }
+  } catch(e) { 
+    console.error('Run failed: ', e.message); 
+    btnElement.innerHTML = originalHtml;
+    btnElement.disabled = false;
+  }
 }
 
 async function deleteTask(id,name){
@@ -1029,7 +1082,7 @@ async function openDetail(id){
         <div class="rounded-xl border border-gray-200 bg-white overflow-hidden shadow-sm">${checks}</div>
       </div>
       <div class="flex gap-3 pt-2">
-        <button onclick="runTask('${t.id}')" class="px-4 py-2.5 text-sm font-bold rounded-xl border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 hover:text-orange-500 transition-colors shadow-sm">▶ Run Now</button>
+        <button onclick="runTask('${t.id}', this)" class="px-4 py-2.5 text-sm font-bold rounded-xl border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 hover:text-orange-500 transition-colors shadow-sm flex items-center justify-center gap-1.5">▶ Run Now</button>
         <button onclick="closeDetailModal();openTaskModal('${t.id}')" class="flex-1 px-4 py-2.5 text-sm font-bold rounded-xl bg-gray-800 text-white hover:bg-gray-900 transition-colors shadow-sm text-center">✎ Edit Task</button>
       </div>`;
   }catch(e){ document.getElementById('dtBody').innerHTML=`<div class="text-red-600 bg-red-50 p-4 rounded-xl border border-red-200 text-sm font-medium">Failed to load details: ${escHtml(e.message)}</div>`; }
