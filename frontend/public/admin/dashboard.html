@@ -93,24 +93,19 @@
       class="h-8 object-contain"
       onerror="this.style.display='none'"
     >
-
     <!-- Divider -->
     <div class="h-6 w-px bg-gray-300 mx-1 hidden sm:block"></div>
-
     <!-- Dashboard Title -->
     <span class="font-bold text-lg text-gray-900 tracking-tight">
       NetWatch Admin
     </span>
-
     <!-- Dashboard Link -->
     <a
       href="/"
-      class="text-sm font-medium text-gray-500 hover:text-orange-500 transition hidden sm:block"
-    >
+      class="text-sm font-medium text-gray-500 hover:text-orange-500 transition hidden sm:block">
       Monitor Dashboard &rarr;
     </a>
   </div>
-
   <!-- Right -->
   <div class="flex items-center gap-5">
     <!-- Clock -->
@@ -118,7 +113,6 @@
       id="istClockAdmin"
       class="text-xs text-gray-500 font-mono bg-gray-100 px-2 py-1 rounded-md border border-gray-200"
     ></span>
-
     <!-- User -->
     <span
       id="userLabel"
@@ -138,7 +132,6 @@
         />
       </svg>
     </span>
-
     <!-- Logout -->
     <button
       onclick="doLogout()"
@@ -164,7 +157,6 @@
   <div class="flex flex-wrap items-center justify-between mb-5 gap-4">
     <h2 class="font-bold text-xl text-gray-900 tracking-tight">Task Management</h2>
   </div>
-
   <div class="flex gap-2 mb-5">
     <button id="stab-ping"
     class="stab-active px-4 py-2.5 text-sm transition-all flex items-center gap-2"
@@ -174,9 +166,8 @@
         d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z">
       </path>
     </svg>
-    Ping Tasks
+    Systems
     </button>
-
     <button id="stab-app"
     class="stab-inactive px-4 py-2.5 text-sm transition-all flex items-center gap-2"
     onclick="setTaskSubTab('app',this)">
@@ -185,7 +176,7 @@
         d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9">
       </path>
     </svg>
-    Application Tasks
+    Applications
     </button>
     <button
       onclick="openTaskModal(null)"
@@ -197,10 +188,9 @@
       Add Task
     </button>
   </div>
-
   <div id="tasks-ping">
     <div class="flex flex-wrap items-center gap-3 mb-4">
-      <input id="searchPingAdmin" type="search" placeholder="Search ping tasks…" class="search-input w-64 si" oninput="renderTasks()">
+      <input id="searchPingAdmin" type="search" placeholder="Search systems tasks…" class="search-input w-64 si" oninput="renderTasks()">
       <span id="pingTaskCount" class="text-xs font-medium text-gray-500 bg-white px-2 py-1 rounded-md border border-gray-200 shadow-sm"></span>
     </div>
     <div class="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm">
@@ -271,7 +261,7 @@
   
   <div id="bin-ping">
     <div class="flex items-center gap-3 mb-4">
-      <input id="searchBinPing" type="search" placeholder="Search deleted ping tasks…" class="search-input w-64 si" oninput="renderBin()">
+      <input id="searchBinPing" type="search" placeholder="Search deleted system tasks…" class="search-input w-64 si" oninput="renderBin()">
     </div>
     <div class="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm">
       <table class="w-full text-sm text-left">

@@ -136,12 +136,12 @@
   <button class="section-tab-btn section-tab-active px-4 py-3.5 text-sm flex items-center gap-2"
           onclick="setSection('ping', this)">
     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path></svg>
-    Ping Tasks
+    Systems
   </button>
   <button class="section-tab-btn section-tab-inactive px-4 py-3.5 text-sm flex items-center gap-2"
           onclick="setSection('app', this)">
     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9"></path></svg>
-    App Tasks
+    Applications
   </button>
   <button class="section-tab-btn section-tab-inactive px-4 py-3.5 text-sm flex items-center gap-2"
           onclick="setSection('all', this)">
@@ -156,28 +156,28 @@
   <div id="section-ping">
     <div class="flex flex-wrap items-center gap-3 mb-5">
       <h2 class="text-xs font-bold text-gray-500 uppercase tracking-wider w-40 flex items-center gap-2">
-        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path></svg> Ping Tasks
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path></svg> Systems Tasks
       </h2>
-      <input id="searchPing" type="search" placeholder="Search ping tasks…"
+      <input id="searchPing" type="search" placeholder="Search systems tasks…"
              class="search-input" oninput="renderAll()">
       <span id="pingCount" class="text-xs font-medium text-gray-400 ml-2"></span>
     </div>
     <div id="gridPing" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5"></div>
-    <div id="emptyPing" class="hidden text-center py-16 text-gray-400 text-sm bg-white rounded-xl border border-gray-200">No ping tasks found.</div>
+    <div id="emptyPing" class="hidden text-center py-16 text-gray-400 text-sm bg-white rounded-xl border border-gray-200">No Systems tasks found.</div>
   </div>
 
   <!-- Application section -->
   <div id="section-app" class="hidden">
     <div class="flex flex-wrap items-center gap-3 mb-5">
       <h2 class="text-xs font-bold text-gray-500 uppercase tracking-wider w-40 flex items-center gap-2">
-        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9"></path></svg> App Tasks
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9"></path></svg> Applications Tasks
       </h2>
       <input id="searchApp" type="search" placeholder="Search application tasks…"
              class="search-input" oninput="renderAll()">
       <span id="appCount" class="text-xs font-medium text-gray-400 ml-2"></span>
     </div>
     <div id="gridApp" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5"></div>
-    <div id="emptyApp" class="hidden text-center py-16 text-gray-400 text-sm bg-white rounded-xl border border-gray-200">No application tasks found.</div>
+    <div id="emptyApp" class="hidden text-center py-16 text-gray-400 text-sm bg-white rounded-xl border border-gray-200">No Application tasks found.</div>
   </div>
 
   <!-- All section -->
