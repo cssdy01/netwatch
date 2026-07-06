@@ -283,14 +283,14 @@ router.post('/import-apply', requireAuth, (req, res) => {
   let inserted = 0, updated = 0;
   const errors = [];
 
-  const applyAll = db.transaction(() => {
+const applyAll = db.transaction(() => {
     if (doInsert) {
       for (const r of preview.ping.toInsert) {
         try {
           db.prepare(`
             INSERT INTO tasks (id,name,type,target,os_type,is_vm,interval_min,n_threshold,
-              email_l1,email_l2,email_l3,email_enabled)
-            VALUES (?,?,?,?,?,0,?,?,?,?,?,?)
+              email_l1,email_l2,email_l3,email_enabled, is_active)
+            VALUES (?,?,?,?,?,0,?,?,?,?,?, ?, 0)
           `).run(uuidv4(), r.name, 'PING', r.target, r.os_type||'Linux',
             r.interval_min, r.n_threshold||DEFAULT_N, r.email_l1, r.email_l2, r.email_l3, r.email_enabled);
           inserted++;
@@ -301,8 +301,8 @@ router.post('/import-apply', requireAuth, (req, res) => {
           db.prepare(`
             INSERT INTO tasks (id,name,type,target,urls,interval_min,n_threshold,
               email_l1,email_l2,email_l3,email_enabled,
-              host_mapping_enabled,host_mapping_hostname,host_mapping_ip)
-            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+              host_mapping_enabled,host_mapping_hostname,host_mapping_ip, is_active)
+            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?, 0)
           `).run(uuidv4(), r.name, 'APPLICATION', r.target, r.urls, r.interval_min,
             r.n_threshold||DEFAULT_N, r.email_l1, r.email_l2, r.email_l3, r.email_enabled,
             r.host_mapping_enabled||0, r.host_mapping_hostname||'', r.host_mapping_ip||'');
