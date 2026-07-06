@@ -190,7 +190,7 @@
   </div>
   <div id="tasks-ping">
     <div class="flex flex-wrap items-center gap-3 mb-4">
-      <input id="searchPingAdmin" type="search" placeholder="Search systems tasks…" class="search-input w-64 si" oninput="renderTasks()">
+      <input id="searchPingAdmin" type="search" placeholder="Search system tasks…" class="search-input w-64 si" oninput="renderTasks()">
       <span id="pingTaskCount" class="text-xs font-medium text-gray-500 bg-white px-2 py-1 rounded-md border border-gray-200 shadow-sm"></span>
     </div>
     <div class="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm">
@@ -244,7 +244,7 @@
           d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z">
         </path>
       </svg>
-      Ping
+      Systems
     </button>
 
     <button id="bstab-app"
@@ -255,7 +255,7 @@
           d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9">
         </path>
       </svg>
-      Application
+      Applications
     </button>
   </div>
   
@@ -715,7 +715,7 @@ function renderTasks(){
 
   document.getElementById('pingTasksBody').innerHTML=ping.length
     ? ping.map(t=>taskRow(t,'ping')).join('')
-    : `<tr><td colspan="10" class="px-5 py-10 text-center text-gray-500">${ps?'No matching ping tasks.':'No ping tasks yet.'}</td></tr>`;
+    : `<tr><td colspan="10" class="px-5 py-10 text-center text-gray-500">${ps?'No matching system tasks.':'No system tasks yet.'}</td></tr>`;
 
   document.getElementById('appTasksBody').innerHTML=app.length
     ? app.map(t=>taskRow(t,'app')).join('')
