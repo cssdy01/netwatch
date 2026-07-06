@@ -1,78 +1,28 @@
-// src/mail/transport.js
-// NetWatch mail transport — intentionally matches scripts/3_run.sh option 6.
-//
-// DELIVERY METHOD — UNCHANGED from original:
-//   spawn(MAIL_BIN, ['-s', subject, ...recipients])
-//   pipe body to stdin
-//   same env: MAILRC=/dev/null, NAME=..., EMAIL=...
-//
-// This preserves the exact envelope that kept mail in Inbox:
-//   From: NetWatch Monitor<root@netwatch-container>
-//
-// HTML support is added using mailx's -a flag to inject the Content-Type header.
-// Most mailx/bsd-mailx/heirloom-mailx builds on Debian/Ubuntu support -a.
-// If the binary does NOT support -a (detected at runtime), we fall back to
-// plain-text body — delivery still works, just no HTML rendering.
-// No sendmail, no Nodemailer, no SMTP credentials, no envelope changes.
-
-const { execSync, spawn } = require('child_process');
+// src/mail/transport.js — Direct SMTP Client Engine
+const nodemailer = require('nodemailer');
 
 const MONITOR_HOST = () => process.env.MONITOR_HOST || 'netwatch';
 const FROM_NAME    = () => process.env.MAIL_FROM_NAME  || 'NetWatch Monitor';
-const FROM_EMAIL   = () => process.env.MAIL_FROM_EMAIL || `alerts@${MONITOR_HOST()}.local`;
+const FROM_EMAIL   = () => process.env.MAIL_FROM_EMAIL || process.env.SMTP_USER;
 
-// ── Binary detection (identical to original) ──────────────────────────────────
-
-function detectMailBin() {
-  const candidates = [
-    '/usr/bin/mail',
-    '/usr/bin/mailx',
-    '/usr/bin/bsd-mailx',
-    '/bin/mail',
-    'mail',
-    'mailx',
-    'bsd-mailx',
-  ];
-  for (const candidate of candidates) {
-    try {
-      if (candidate.startsWith('/')) {
-        execSync(`test -x ${candidate}`, { stdio: 'pipe', shell: true });
-        console.log(`[NetWatch Mail] Using script-compatible mail binary: ${candidate}`);
-        return candidate;
-      }
-      const found = execSync(`command -v ${candidate} 2>/dev/null`, {
-        stdio: 'pipe', shell: true,
-      }).toString().trim();
-      if (found) {
-        console.log(`[NetWatch Mail] Using script-compatible mail binary: ${found}`);
-        return found;
-      }
-    } catch (_) {}
+// Configure Native Connection Pool
+const transporter = nodemailer.createTransport({
+  host: process.env.SMTP_HOST,
+  port: parseInt(process.env.SMTP_PORT || '587', 10),
+  secure: process.env.SMTP_PORT === '465', // true for 465, false for 587/25
+  auth: {
+    user: process.env.SMTP_USER,
+    pass: process.env.SMTP_PASS,
+  },
+  tls: {
+    // Prevent self-signed cert issues with internal mail networks
+    rejectUnauthorized: false
   }
-  console.warn('[NetWatch Mail] WARNING: no mail/mailx binary found. Rebuild backend image.');
-  return null;
-}
+});
 
-const MAIL_BIN = detectMailBin();
-
-// Detect at startup whether this mailx supports the -a header-append flag.
-// bsd-mailx on Debian/Ubuntu supports: mail -a "Header: value" ...
-// We test by running `mail --help` or checking known paths.
-function detectMailxSupportsHeaderFlag() {
-  if (!MAIL_BIN) return false;
-  try {
-    // bsd-mailx and heirloom-mailx both accept -a; if help output mentions it, confirmed.
-    // We default to true for known Debian bsd-mailx paths; set false if send fails.
-    // The flag is tried first; on failure the send() function falls back to plain-text.
-    return true; // attempted optimistically; fallback on runtime error
-  } catch (_) {
-    return false;
-  }
-}
-
-let MAILX_SUPPORTS_HEADER = detectMailxSupportsHeaderFlag();
-
-// ── Sanitisation (identical to original) ─────────────────────────────────────
+// Maintain file signatures for contract safety across controllers
+const MAIL_BIN = () => 'nodemailer';
+const MAIL_BIN_AVAILABLE = () => true;
 
 function normaliseRecipients(to) {
   const list = Array.isArray(to) ? to : String(to || '').split(',');
@@ -83,12 +33,6 @@ function sanitiseSubject(subject) {
   return String(subject || '[NETWATCH] Notification').replace(/[\r\n]+/g, ' ').trim();
 }
 
-function sanitiseHeaderValue(v) {
-  return String(v || '').replace(/[\r\n]+/g, ' ').trim();
-}
-
-// ── HTML escaping ─────────────────────────────────────────────────────────────
-
 function esc(v) {
   return String(v == null ? '' : v)
     .replace(/&/g, '&amp;')
@@ -98,93 +42,23 @@ function esc(v) {
     .replace(/'/g, '&#39;');
 }
 
-// ── Core send function — SAME MECHANISM AS ORIGINAL + optional -a flag ────────
-
 /**
- * sendViaMail — identical spawn pattern to original transport.js.
- * Adds -a "Content-Type: text/html; charset=UTF-8" when sending HTML.
- * Falls back to plain-text if -a is unsupported or causes an error.
- */
-function sendViaMail({ to, subject, body, contentType }) {
-  return new Promise((resolve, reject) => {
-    if (!MAIL_BIN) {
-      return reject(new Error('No mail/mailx binary found inside backend container'));
-    }
-
-    const recipients = normaliseRecipients(to);
-    if (!recipients.length) return reject(new Error('No recipients supplied'));
-
-    // Build args — same as original: ['-s', subject, ...recipients]
-    // Optionally prepend -a "Content-Type: text/html; charset=UTF-8"
-    const args = [];
-    if (contentType && MAILX_SUPPORTS_HEADER) {
-      args.push('-a', sanitiseHeaderValue(`Content-Type: ${contentType}`));
-    }
-    args.push('-s', sanitiseSubject(subject), ...recipients);
-
-    const child = spawn(MAIL_BIN, args, {
-      stdio: ['pipe', 'pipe', 'pipe'],
-      env: {
-        ...process.env,
-        MAILRC: '/dev/null',     // keep mailx deterministic — same as original
-        NAME:   FROM_NAME(),
-        EMAIL:  FROM_EMAIL(),
-      },
-    });
-
-    let stderr = '';
-    child.stderr.on('data', d => { stderr += d.toString(); });
-    child.on('error', reject);
-    child.on('close', code => {
-      if (code === 0) return resolve();
-      reject(new Error(`mail exited with code ${code}${stderr ? `: ${stderr.trim()}` : ''}`));
-    });
-
-    // Pipe body — identical to original
-    child.stdin.write(String(body || ''));
-    if (!String(body || '').endsWith('\n')) child.stdin.write('\n');
-    child.stdin.end();
-  });
-}
-
-/**
- * Main send entry point.
- * When html is provided:
- *   1. Try sending with HTML body + Content-Type header via -a flag
- *   2. If -a flag fails, disable it globally and retry with plain-text
- * When only plainText is provided:
- *   Behaves exactly like the original.
+ * Direct SMTP Connection Sender
  */
 async function send({ to, subject, plainText, html }) {
   const recipients = normaliseRecipients(to);
   if (!recipients.length) throw new Error('No recipients supplied');
 
-  if (html && MAILX_SUPPORTS_HEADER) {
-    try {
-      await sendViaMail({
-        to: recipients,
-        subject,
-        body: html,
-        contentType: 'text/html; charset=UTF-8',
-      });
-      return;
-    } catch (err) {
-      // If -a flag caused the failure, disable it and fall through to plain-text
-      if (err.message && (err.message.includes('invalid option') || err.message.includes('unknown option'))) {
-        console.warn('[NetWatch Mail] mailx -a flag not supported, switching to plain-text only');
-        MAILX_SUPPORTS_HEADER = false;
-      } else {
-        throw err; // genuine delivery failure — propagate
-      }
-    }
-  }
-
-  // Plain-text fallback — identical to original behaviour
-  await sendViaMail({ to: recipients, subject, body: plainText || '' });
+  await transporter.sendMail({
+    from: `"${FROM_NAME()}" <${FROM_EMAIL()}>`,
+    to: recipients.join(', '),
+    subject: sanitiseSubject(subject),
+    text: plainText || '',
+    html: html || '',
+  });
 }
 
-// ── IST helpers ───────────────────────────────────────────────────────────────
-
+// ─── IST Helpers ───
 function nowIST() {
   return new Date().toLocaleString('en-IN', {
     timeZone: 'Asia/Kolkata',
@@ -202,8 +76,7 @@ function toIST(utcStr) {
   }) + ' IST';
 }
 
-// ── Plain-text builders (updated field names per spec) ────────────────────────
-
+// ─── Plain-Text Builders ───
 const TIER_LABEL = {
   L1: 'L1 - Initial fault',
   L2: 'L2 - Escalation (open 48h)',
@@ -266,8 +139,7 @@ function buildTestPlainText() {
 NetWatch mail configuration test.
 
 Monitor Host : ${MONITOR_HOST()}
-Mail Method  : mailx/mail (${MAIL_BIN || 'not found'})
-Relay        : ${process.env.POSTFIX_RELAY || '172.17.0.1:25'}
+Mail Method  : Direct SMTP Engine
 Sent At      : ${nowIST()}
 
 Status:
@@ -278,8 +150,7 @@ NetWatch Monitor | ${MONITOR_HOST()}
 `;
 }
 
-// ── HTML builders — simple, Outlook-safe, inline CSS ─────────────────────────
-
+// ─── HTML Builders ───
 const THEME = {
   red:    { header: '#c0392b', light: '#fdf2f2', border: '#e74c3c' },
   orange: { header: '#c0550a', light: '#fdf5ef', border: '#d35400' },
@@ -313,13 +184,11 @@ function baseHtml({ colour, headerTitle, headerSub, rows, errorText, statusText 
 <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#f0f0f0;padding:20px 0;">
   <tr><td align="center">
     <table width="540" cellpadding="0" cellspacing="0" border="0" style="max-width:540px;width:100%;background:#ffffff;border:1px solid #cccccc;">
-
       <tr><td style="background:${t.header};padding:14px 20px;">
         <p style="margin:0;font-size:10px;color:rgba(255,255,255,0.7);letter-spacing:.8px;text-transform:uppercase;">NetWatch Monitor</p>
         <p style="margin:3px 0 0 0;font-size:17px;color:#ffffff;font-weight:bold;">${esc(headerTitle)}</p>
         <p style="margin:3px 0 0 0;font-size:12px;color:rgba(255,255,255,0.8);">${esc(headerSub)}</p>
       </td></tr>
-
       <tr><td style="padding:18px 22px 22px 22px;">
         <table width="100%" cellpadding="0" cellspacing="0" border="0">
           ${rowsHtml}
@@ -327,12 +196,10 @@ function baseHtml({ colour, headerTitle, headerSub, rows, errorText, statusText 
         ${errorHtml}
         ${statusHtml}
       </td></tr>
-
       <tr><td style="padding:10px 22px;border-top:1px solid #eeeeee;background:#f9f9f9;">
         <p style="margin:0;font-size:11px;color:#888888;">Regards,&nbsp;<strong style="color:#444444;">NetWatch Monitor</strong> | ${mon}</p>
         <p style="margin:3px 0 0 0;font-size:10px;color:#bbbbbb;">Automated notification. Do not reply.</p>
       </td></tr>
-
     </table>
   </td></tr>
 </table>
@@ -389,22 +256,21 @@ function buildAllClearHtml({ task, downtimeDuration }) {
   });
 }
 
+// Fixed function parameters to support contextless testing triggers safely
 function buildTestHtml() {
   return baseHtml({
     colour:      'blue',
     headerTitle: 'NETWATCH MAIL TEST',
     headerSub:   'Mail configuration check',
     rows: [
-      ['Monitor Host', esc(MONITOR_HOST())],
-      ['Mail Method',  'mailx / Postfix local relay'],
-      ['Relay',        esc(process.env.POSTFIX_RELAY || '172.17.0.1:25')],
+      ['Monitor Host', esc(process.env.MONITOR_HOST || 'localhost')],
+      ['Mail Method',  'Direct SMTP via Nodemailer Pool'],
+      ['Relay Server', esc(process.env.SMTP_HOST || 'not-set')],
       ['Sent At',      esc(nowIST())],
     ],
     statusText: 'Mail configuration is working correctly.',
   });
 }
-
-// ── Exports ───────────────────────────────────────────────────────────────────
 
 module.exports = {
   send,
