@@ -57,10 +57,12 @@ function enrichTask(task) {
 router.get('/public/summary', (_req, res) => {
   const tasks = db.prepare('SELECT * FROM tasks WHERE deleted_at IS NULL ORDER BY name').all();
   res.json(tasks.map(t => {
-    const lastCheck = db.prepare(`
+    // Fetch the last 10 checks instead of just 1
+    const checks = db.prepare(`
       SELECT result, response_ms, checked_at FROM checks
-      WHERE task_id=? ORDER BY checked_at DESC LIMIT 1
-    `).get(t.id);
+      WHERE task_id=? ORDER BY checked_at DESC LIMIT 10
+    `).all(t.id);
+    
     const incident = db.prepare('SELECT t0 FROM incident_state WHERE task_id=?').get(t.id);
     let incidentDuration = null;
     if (incident) {
@@ -69,6 +71,9 @@ router.get('/public/summary', (_req, res) => {
       const m  = Math.floor((ms % 3600000) / 60000);
       incidentDuration = h ? `${h}h ${m}m` : `${m}m`;
     }
+
+    const lastCheck = checks[0] || null;
+
     return {
       id: t.id, name: t.name, type: t.type, target: t.target,
       status: t.status, last_checked: t.last_checked,
@@ -76,6 +81,8 @@ router.get('/public/summary', (_req, res) => {
       last_result:       lastCheck?.result        || null,
       last_response_ms:  lastCheck?.response_ms   || null,
       incident_duration: incidentDuration,
+      // Map the results and reverse them so oldest is first (left to right for the UI candles)
+      history:           checks.map(c => c.result).reverse()
     };
   }));
 });
