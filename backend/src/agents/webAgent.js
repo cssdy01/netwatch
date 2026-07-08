@@ -114,7 +114,7 @@ async function checkUrl(urlConfig, defaultTimeout = 15, mapping = null) {
 
     return { url: originalUrl, result: 'PASS', httpStatus: status, responseMs, errorRaw: null };
 
-  } } catch (err) {
+  } catch (err) {
     const responseMs = Date.now() - start;
 
     // Extremely generic error messages to bypass spam filter heuristics
