@@ -1,7 +1,4 @@
 // src/mail/mailService.js
-// Phase 5 (revised): HTML email via mailx -a flag.
-// Send mechanism identical to original — same envelope, same From header,
-// same Postfix relay path. Only adds html: param to send().
 
 const {
   send,

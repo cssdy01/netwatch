@@ -1,19 +1,4 @@
 // src/mail/transport.js
-// NetWatch mail transport — intentionally matches scripts/3_run.sh option 6.
-//
-// DELIVERY METHOD — UNCHANGED from original:
-//   spawn(MAIL_BIN, ['-s', subject, ...recipients])
-//   pipe body to stdin
-//   same env: MAILRC=/dev/null, NAME=..., EMAIL=...
-//
-// This preserves the exact envelope that kept mail in Inbox:
-//   From: NetWatch Monitor<root@netwatch-container>
-//
-// HTML support is added using mailx's -a flag to inject the Content-Type header.
-// Most mailx/bsd-mailx/heirloom-mailx builds on Debian/Ubuntu support -a.
-// If the binary does NOT support -a (detected at runtime), we fall back to
-// plain-text body — delivery still works, just no HTML rendering.
-// No sendmail, no Nodemailer, no SMTP credentials, no envelope changes.
 
 const { execSync, spawn } = require('child_process');
 
@@ -56,14 +41,9 @@ function detectMailBin() {
 const MAIL_BIN = detectMailBin();
 
 // Detect at startup whether this mailx supports the -a header-append flag.
-// bsd-mailx on Debian/Ubuntu supports: mail -a "Header: value" ...
-// We test by running `mail --help` or checking known paths.
 function detectMailxSupportsHeaderFlag() {
   if (!MAIL_BIN) return false;
   try {
-    // bsd-mailx and heirloom-mailx both accept -a; if help output mentions it, confirmed.
-    // We default to true for known Debian bsd-mailx paths; set false if send fails.
-    // The flag is tried first; on failure the send() function falls back to plain-text.
     return true; // attempted optimistically; fallback on runtime error
   } catch (_) {
     return false;
@@ -100,11 +80,6 @@ function esc(v) {
 
 // ── Core send function — SAME MECHANISM AS ORIGINAL + optional -a flag ────────
 
-/**
- * sendViaMail — identical spawn pattern to original transport.js.
- * Adds -a "Content-Type: text/html; charset=UTF-8" when sending HTML.
- * Falls back to plain-text if -a is unsupported or causes an error.
- */
 function sendViaMail({ to, subject, body, contentType }) {
   return new Promise((resolve, reject) => {
     if (!MAIL_BIN) {
@@ -114,8 +89,6 @@ function sendViaMail({ to, subject, body, contentType }) {
     const recipients = normaliseRecipients(to);
     if (!recipients.length) return reject(new Error('No recipients supplied'));
 
-    // Build args — same as original: ['-s', subject, ...recipients]
-    // Optionally prepend -a "Content-Type: text/html; charset=UTF-8"
     const args = [];
     if (contentType && MAILX_SUPPORTS_HEADER) {
       args.push('-a', sanitiseHeaderValue(`Content-Type: ${contentType}`));
@@ -126,7 +99,7 @@ function sendViaMail({ to, subject, body, contentType }) {
       stdio: ['pipe', 'pipe', 'pipe'],
       env: {
         ...process.env,
-        MAILRC: '/dev/null',     // keep mailx deterministic — same as original
+        MAILRC: '/dev/null',     
         NAME:   FROM_NAME(),
         EMAIL:  FROM_EMAIL(),
       },
@@ -140,21 +113,12 @@ function sendViaMail({ to, subject, body, contentType }) {
       reject(new Error(`mail exited with code ${code}${stderr ? `: ${stderr.trim()}` : ''}`));
     });
 
-    // Pipe body — identical to original
     child.stdin.write(String(body || ''));
     if (!String(body || '').endsWith('\n')) child.stdin.write('\n');
     child.stdin.end();
   });
 }
 
-/**
- * Main send entry point.
- * When html is provided:
- *   1. Try sending with HTML body + Content-Type header via -a flag
- *   2. If -a flag fails, disable it globally and retry with plain-text
- * When only plainText is provided:
- *   Behaves exactly like the original.
- */
 async function send({ to, subject, plainText, html }) {
   const recipients = normaliseRecipients(to);
   if (!recipients.length) throw new Error('No recipients supplied');
@@ -169,17 +133,15 @@ async function send({ to, subject, plainText, html }) {
       });
       return;
     } catch (err) {
-      // If -a flag caused the failure, disable it and fall through to plain-text
       if (err.message && (err.message.includes('invalid option') || err.message.includes('unknown option'))) {
         console.warn('[NetWatch Mail] mailx -a flag not supported, switching to plain-text only');
         MAILX_SUPPORTS_HEADER = false;
       } else {
-        throw err; // genuine delivery failure — propagate
+        throw err; 
       }
     }
   }
 
-  // Plain-text fallback — identical to original behaviour
   await sendViaMail({ to: recipients, subject, body: plainText || '' });
 }
 
@@ -202,7 +164,9 @@ function toIST(utcStr) {
   }) + ' IST';
 }
 
-// ── Plain-text builders (updated field names per spec) ────────────────────────
+// ── Plain-text builders ───────────────────────────────────────────────────────
+
+// ── Plain-text builders ───────────────────────────────────────────────────────
 
 const TIER_LABEL = {
   L1: 'L1 - Initial fault',
@@ -210,44 +174,23 @@ const TIER_LABEL = {
   L3: 'L3 - Repeated escalation',
 };
 
-function getUrlsText(task) {
-  if (task.type !== 'APPLICATION') return null;
-  
-  // Use the new single URL column first
-  if (task.url) return task.url; 
-  
-  // Fallback for old tasks that haven't been updated yet
-  try {
-    const urls = JSON.parse(task.urls || '[]');
-    if (!urls.length) return null;
-    return urls.map(u => (typeof u === 'string' ? u : u.url)).join('\n             ');
-  } catch { return null; }
-}
-
-function getUrlsHtml(task) {
-  if (task.type !== 'APPLICATION') return null;
-  
-  // Use the new single URL column first
-  if (task.url) return `<span style="word-break:break-all;">${esc(task.url)}</span>`;
-  
-  // Fallback for old tasks
-  try {
-    const urls = JSON.parse(task.urls || '[]');
-    if (!urls.length) return null;
-    return urls.map(u => `<span style="word-break:break-all;">${esc(typeof u === 'string' ? u : u.url)}</span>`).join('<br>');
-  } catch { return null; }
-}
-
 function buildAlertPlainText({ task, t0, tier, errorRaw }) {
   const typeLabel = task.type === 'PING' ? 'Ping / ICMP' : 'Application';
-  const urlsText  = getUrlsText(task);
+  
+  let urlRow = '';
+  if (task.type === 'APPLICATION' && task.url) {
+    const scheme = task.url.startsWith('https://') ? 'https://' : (task.url.startsWith('http://') ? 'http://' : '');
+    const restOfUrl = task.url.replace(scheme, '');
+    urlRow = `\nURL ${scheme}      : ${restOfUrl}`;
+  }
+
   return `Hello Team,
 
 NetWatch detected an issue.
 
 Task           : ${task.name}
 Type           : ${typeLabel}
-System IP      : ${task.target}${urlsText ? `\nURL            : ${urlsText}` : ''}
+System IP      : ${task.target}${urlRow}
 Alert          : ${TIER_LABEL[tier] || tier}
 Incident Start : ${toIST(t0)}
 
@@ -261,13 +204,21 @@ NetWatch Monitor | ${MONITOR_HOST()}
 
 function buildAllClearPlainText({ task, downtimeDuration }) {
   const typeLabel = task.type === 'PING' ? 'Ping / ICMP' : 'Application';
+  
+  let urlRow = '';
+  if (task.type === 'APPLICATION' && task.url) {
+    const scheme = task.url.startsWith('https://') ? 'https://' : (task.url.startsWith('http://') ? 'http://' : '');
+    const restOfUrl = task.url.replace(scheme, '');
+    urlRow = `\nURL ${scheme}      : ${restOfUrl}`;
+  }
+
   return `Hello Team,
 
 NetWatch detected recovery.
 
 Task      : ${task.name}
 Type      : ${typeLabel}
-System IP : ${task.target}
+System IP : ${task.target}${urlRow}
 Recovered : ${nowIST()}
 Downtime  : ${downtimeDuration}
 
@@ -359,26 +310,18 @@ function baseHtml({ colour, headerTitle, headerSub, rows, errorText, statusText 
 </html>`;
 }
 
-function getUrlsHtml(task) {
-  if (task.type !== 'APPLICATION') return null;
-  
-  // Use the new single URL column first
-  if (task.url) return `<span style="word-break:break-all;">${esc(task.url)}</span>`;
-  
-  // Fallback for old tasks
-  try {
-    const urls = JSON.parse(task.urls || '[]');
-    if (!urls.length) return null;
-    return urls.map(u => `<span style="word-break:break-all;">${esc(typeof u === 'string' ? u : u.url)}</span>`).join('<br>');
-  } catch { return null; }
-}
-
 function buildAlertHtml({ task, t0, tier, errorRaw }) {
   const colour    = tier === 'L1' ? 'red' : 'orange';
   const titles    = { L1: 'ALERT — DOWN', L2: 'ESCALATION — STILL DOWN', L3: 'ESCALATION — STILL DOWN' };
   const subs      = { L1: 'Initial fault detected', L2: 'Open for 48 hours', L3: 'Repeated 48h escalation' };
   const typeLabel = task.type === 'PING' ? 'Ping / ICMP' : 'Application';
-  const urlsHtml  = getUrlsHtml(task);
+  
+  let urlRows = [];
+  if (task.type === 'APPLICATION' && task.url) {
+    const scheme = task.url.startsWith('https://') ? 'https://' : (task.url.startsWith('http://') ? 'http://' : '');
+    const restOfUrl = task.url.replace(scheme, '');
+    urlRows.push([`URL ${scheme}`, esc(restOfUrl)]);
+  }
 
   return baseHtml({
     colour,
@@ -388,7 +331,7 @@ function buildAlertHtml({ task, t0, tier, errorRaw }) {
       ['Task',           esc(task.name)],
       ['Type',           esc(typeLabel)],
       ['System IP',      esc(task.target)],
-      ...(urlsHtml ? [['URL', urlsHtml]] : []),
+      ...urlRows,
       ['Alert',          esc(TIER_LABEL[tier] || tier)],
       ['Incident Start', esc(toIST(t0))],
     ],
@@ -398,6 +341,14 @@ function buildAlertHtml({ task, t0, tier, errorRaw }) {
 
 function buildAllClearHtml({ task, downtimeDuration }) {
   const typeLabel = task.type === 'PING' ? 'Ping / ICMP' : 'Application';
+
+  let urlRows = [];
+  if (task.type === 'APPLICATION' && task.url) {
+    const scheme = task.url.startsWith('https://') ? 'https://' : (task.url.startsWith('http://') ? 'http://' : '');
+    const restOfUrl = task.url.replace(scheme, '');
+    urlRows.push([`URL ${scheme}`, esc(restOfUrl)]);
+  }
+
   return baseHtml({
     colour:      'green',
     headerTitle: 'NETWATCH ALL CLEAR',
@@ -406,6 +357,7 @@ function buildAllClearHtml({ task, downtimeDuration }) {
       ['Task',      esc(task.name)],
       ['Type',      esc(typeLabel)],
       ['System IP', esc(task.target)],
+      ...urlRows,
       ['Recovered', esc(nowIST())],
       ['Downtime',  esc(downtimeDuration)],
     ],
