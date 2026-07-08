@@ -759,21 +759,50 @@ async function saveTask(){
 }
 
 async function openDetail(id){
-  document.getElementById('detailModal').classList.remove('hidden'); document.getElementById('dtBody').innerHTML='Loading...';
+  document.getElementById('detailModal').classList.remove('hidden'); 
+  document.getElementById('dtBody').innerHTML='<div class="text-gray-500 flex items-center gap-2"><svg class="w-5 h-5 animate-spin text-orange-500" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> Loading...</div>';
+  
   try{
-    const t=await API.task(id); document.getElementById('dtTitle').textContent=t.name;
-    const epHtml=t.type==='APPLICATION'&&t.last_endpoint_results?`<div class="bg-white border p-3 mt-3 rounded shadow-sm text-xs">Endpoint: ${escHtml(t.last_endpoint_results[0]?.url)} | Status: ${t.last_endpoint_results[0]?.httpStatus||'Err'}</div>`:'';
+    const t=await API.task(id); 
+    document.getElementById('dtTitle').textContent=t.name;
+    
+    const epHtml=t.type==='APPLICATION'&&t.last_endpoint_results?`<div class="bg-white border p-3 mt-3 rounded shadow-sm text-xs">Endpoint: <span class="font-mono">${escHtml(t.last_endpoint_results[0]?.url)}</span> | Status: ${t.last_endpoint_results[0]?.httpStatus||'Err'}</div>`:'';
+    
+    // Generate Recent Checks HTML (Last 10)
+    const checksHtml = t.checks?.length
+      ? `<div class="mt-4">
+           <div class="text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-2">Recent Checks (Last 10)</div>
+           <div class="rounded-xl overflow-hidden border border-gray-200 shadow-sm bg-white">
+             ${t.checks.slice(0, 10).map(c => `
+               <div class="flex items-center gap-4 px-4 py-2.5 border-b border-gray-100 last:border-0 text-sm hover:bg-gray-50 transition-colors">
+                 <span class="font-bold w-12 text-center rounded px-1 py-0.5 text-xs ${c.result === 'PASS' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}">${c.result}</span>
+                 <span class="text-gray-600 font-medium">${toIST(c.checked_at)}</span>
+                 ${c.response_ms != null ? `<span class="text-gray-500 text-xs ml-auto bg-gray-100 px-2 py-1 rounded-md border border-gray-200">${c.response_ms}ms</span>` : ''}
+               </div>`).join('')}
+           </div>
+         </div>` 
+      : '<div class="mt-4 text-sm text-gray-500 px-4 py-4 text-center border border-gray-200 rounded-xl bg-white shadow-sm">No checks yet</div>';
+
     document.getElementById('dtBody').innerHTML=`
-      <div class="grid grid-cols-2 gap-y-3 gap-x-4 text-sm text-gray-500 bg-gray-50 p-4 rounded-xl border">
+      <div class="grid grid-cols-2 gap-y-3 gap-x-4 text-sm text-gray-500 bg-gray-50 p-4 rounded-xl border border-gray-200 shadow-sm">
         <div>Type: <b class="text-gray-900">${t.type}</b></div><div>Target: <b class="text-orange-600 font-mono">${escHtml(t.target)}</b></div>
         <div>Interval: <b class="text-gray-900">${t.interval_min}m</b></div><div>N Threshold: <b class="text-gray-900">${t.n_threshold}</b></div>
       </div>
-      ${t.type === 'APPLICATION' && t.url ? `<div class="bg-white border rounded p-3 text-xs font-mono break-all">${escHtml(t.url)}</div>` : ''}
+      ${t.type === 'APPLICATION' && t.url ? `<div class="bg-white border border-gray-200 shadow-sm rounded-xl p-3 text-xs font-mono break-all mt-3">${escHtml(t.url)}</div>` : ''}
       ${epHtml}
-      ${t.last_error_raw?`<pre class="text-xs text-red-800 rounded p-4 bg-red-50 border border-red-200 mt-2 whitespace-pre-wrap">${escHtml(t.last_error_raw)}</pre>`:''}
-      <div class="mt-4"><button onclick="closeDetailModal();openTaskModal('${t.id}')" class="px-4 py-2 bg-gray-800 text-white rounded font-bold text-sm">Edit Task</button></div>`;
-  }catch(e){ document.getElementById('dtBody').innerHTML=`Error: ${escHtml(e.message)}`; }
+      ${t.last_error_raw?`<pre class="text-xs text-red-800 rounded-xl p-4 bg-red-50 border border-red-200 mt-3 whitespace-pre-wrap shadow-sm">${escHtml(t.last_error_raw)}</pre>`:''}
+      
+      ${checksHtml}
+      
+      <div class="mt-5 flex gap-3">
+        <button onclick="runTask('${t.id}', this)" class="px-4 py-2.5 text-sm font-bold rounded-xl border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 hover:text-orange-500 transition-colors shadow-sm flex items-center justify-center gap-1.5">▶ Run Now</button>
+        <button onclick="closeDetailModal();openTaskModal('${t.id}')" class="flex-1 px-4 py-2.5 bg-gray-800 text-white rounded-xl font-bold text-sm shadow-sm hover:bg-gray-900 transition-colors text-center">✎ Edit Task</button>
+      </div>`;
+  }catch(e){ 
+    document.getElementById('dtBody').innerHTML=`<div class="text-red-600 bg-red-50 p-4 rounded-xl border border-red-200 text-sm font-medium">Failed to load details: ${escHtml(e.message)}</div>`; 
+  }
 }
+
 function closeDetailModal(){ document.getElementById('detailModal').classList.add('hidden'); }
 
 // ── BACKUP ──
