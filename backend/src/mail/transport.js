@@ -212,10 +212,29 @@ const TIER_LABEL = {
 
 function getUrlsText(task) {
   if (task.type !== 'APPLICATION') return null;
+  
+  // Use the new single URL column first
+  if (task.url) return task.url; 
+  
+  // Fallback for old tasks that haven't been updated yet
   try {
     const urls = JSON.parse(task.urls || '[]');
     if (!urls.length) return null;
     return urls.map(u => (typeof u === 'string' ? u : u.url)).join('\n             ');
+  } catch { return null; }
+}
+
+function getUrlsHtml(task) {
+  if (task.type !== 'APPLICATION') return null;
+  
+  // Use the new single URL column first
+  if (task.url) return `<span style="word-break:break-all;">${esc(task.url)}</span>`;
+  
+  // Fallback for old tasks
+  try {
+    const urls = JSON.parse(task.urls || '[]');
+    if (!urls.length) return null;
+    return urls.map(u => `<span style="word-break:break-all;">${esc(typeof u === 'string' ? u : u.url)}</span>`).join('<br>');
   } catch { return null; }
 }
 
@@ -342,6 +361,11 @@ function baseHtml({ colour, headerTitle, headerSub, rows, errorText, statusText 
 
 function getUrlsHtml(task) {
   if (task.type !== 'APPLICATION') return null;
+  
+  // Use the new single URL column first
+  if (task.url) return `<span style="word-break:break-all;">${esc(task.url)}</span>`;
+  
+  // Fallback for old tasks
   try {
     const urls = JSON.parse(task.urls || '[]');
     if (!urls.length) return null;

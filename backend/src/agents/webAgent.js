@@ -114,30 +114,24 @@ async function checkUrl(urlConfig, defaultTimeout = 15, mapping = null) {
 
     return { url: originalUrl, result: 'PASS', httpStatus: status, responseMs, errorRaw: null };
 
-  } catch (err) {
+  } } catch (err) {
     const responseMs = Date.now() - start;
-    const mapInfo    = shouldMap
-      ? ` (hostname ${mapping.hostname} mapped to ${mapping.ip.trim()})`
-      : '';
 
-    let errorRaw = err.message;
+    // Extremely generic error messages to bypass spam filter heuristics
+    let errorRaw = 'HTTP Request Failed'; 
 
     if (err.code === 'ECONNABORTED' || err.code === 'ETIMEDOUT') {
-      errorRaw = `Connection timeout after ${timeoutMs}ms — host did not respond${mapInfo} (${originalUrl})`;
+      errorRaw = `Connection timeout (${timeoutMs}ms)`;
     } else if (err.code === 'ECONNREFUSED') {
-      errorRaw = `Connection refused — port closed or service not running${mapInfo} (${originalUrl})`;
+      errorRaw = 'Connection refused by server';
     } else if (err.code === 'ENOTFOUND') {
-      if (mapping && mapping.enabled) {
-        errorRaw = `DNS/network failure — host mapping enabled but ${mapping.ip} unreachable for ${originalUrl}`;
-      } else {
-        errorRaw = `DNS resolution failed — hostname not found for ${originalUrl}. Enable hostname mapping in the task if this is a private hostname.`;
-      }
+      errorRaw = 'Host unreachable (DNS lookup failed)';
     } else if (err.code === 'EHOSTUNREACH') {
-      errorRaw = `Host unreachable — check network route${mapInfo} (${originalUrl})`;
+      errorRaw = 'Host unreachable (Network route)';
     } else if (err.code === 'ECONNRESET') {
-      errorRaw = `Connection reset by server${mapInfo} (${originalUrl})`;
+      errorRaw = 'Connection reset by server';
     } else if (err.code === 'DEPTH_ZERO_SELF_SIGNED_CERT' || err.code === 'UNABLE_TO_VERIFY_LEAF_SIGNATURE') {
-      errorRaw = `TLS certificate error${mapInfo} (${originalUrl}) — ${err.message}`;
+      errorRaw = 'TLS/SSL certificate validation failed';
     }
 
     return { url: originalUrl, result: 'FAIL', httpStatus: null, responseMs, errorRaw };
@@ -148,7 +142,7 @@ async function run(task) {
   if (!task.url) {
     return {
       result: 'FAIL', responseMs: 0,
-      errorRaw: 'No URL configured for this application task',
+      errorRaw: 'No URL configured',
       endpointResults: null,
     };
   }
@@ -168,18 +162,10 @@ async function run(task) {
   // Validate mapping config if enabled
   if (mapping.enabled) {
     if (!mapping.hostname) {
-      return {
-        result: 'FAIL', responseMs: 0,
-        errorRaw: 'Hostname mapping is enabled but no hostname is configured. Edit the task and add the hostname.',
-        endpointResults: null,
-      };
+      return { result: 'FAIL', responseMs: 0, errorRaw: 'Mapping enabled but hostname missing', endpointResults: null };
     }
     if (!isValidIpv4(mapping.ip)) {
-      return {
-        result: 'FAIL', responseMs: 0,
-        errorRaw: `Hostname mapping is enabled but the IP address "${mapping.ip || '(empty)'}" is invalid. Edit the task and enter a valid IPv4 address.`,
-        endpointResults: null,
-      };
+      return { result: 'FAIL', responseMs: 0, errorRaw: 'Mapping enabled but IP invalid', endpointResults: null };
     }
   }
 
@@ -191,16 +177,12 @@ async function run(task) {
 
   const r = await checkUrl(urlConfig, 15, mapping.enabled ? mapping : null);
 
-  // SPAM FIX: Clean internal server IP mapping descriptions from the final output so it doesn't trigger Spam/Junk filters
-  if (r.errorRaw) {
-    r.errorRaw = r.errorRaw.replace(/\(hostname.*?mapped to.*?\)/i, '[Host Mapping Active]');
-  }
-
   return {
     result:          r.result,
     responseMs:      r.responseMs,
+    // Provide ONLY the raw error text without appending the URL or bracket tags
     errorRaw:        r.errorRaw,
-    endpointResults: [r], // Wrap single result in array to maintain backwards compatibility in the UI checks table
+    endpointResults: [r],
   };
 }
 
