@@ -339,6 +339,7 @@ router.patch('/:id/email-toggle', requireAuth, (req, res) => {
 
   log('INFO', 'ADMIN', req.user.username, task.id,
     `Email ${newVal ? 'enabled' : 'disabled'} for "${task.name}"`, null);
+  
   res.json({ email_enabled: newVal === 1 });
 });
 
@@ -358,7 +359,7 @@ router.patch('/:id/active-toggle', requireAuth, (req, res) => {
 
   log('INFO', 'ADMIN', req.user.username, task.id,
     `Task "${task.name}" ${newVal ? 'activated' : 'deactivated (paused)'}`, null);
-    `Task "${task.name}" ${newVal ? 'activated' : 'deactivated'}`);
+  
   res.json({ is_active: newVal === 1 });
 });
 
