@@ -10,7 +10,7 @@ const multer     = require('multer');
 const { v4: uuidv4 } = require('uuid');
 const db         = require('../db');
 const { requireAuth } = require('../middleware/auth');
-const { log, audit } = require('../services/appLog');
+const { log } = require('../services/appLog');
 const { MIN_INTERVAL_MIN, MAX_INTERVAL_MIN, MIN_N_THRESHOLD, MAX_N_THRESHOLD, isValidIpv4 } = require('../middleware/validateTask');
 
 const router = Router();
@@ -103,7 +103,6 @@ router.get('/export', requireAuth, async (req, res) => {
   res.end();
 
   log('INFO', 'BACKUP', req.user.username, null, `Backup exported at ${nowISTLabel()}`, null);
-  audit(req.user.username, 'EXPORT', `Excel backup downloaded at ${nowISTLabel()}`);
 });
 
 // ── IMPORT PREVIEW ─────────────────────────────────────────────────────────────
@@ -357,7 +356,6 @@ const applyAll = db.transaction(() => {
 
   log('INFO', 'BACKUP', req.user.username, null,
     `Import applied (${action}): ${inserted} inserted, ${updated} updated, ${errors.length} errors at ${nowISTLabel()}`, null);
-  audit(req.user.username, 'IMPORT', `Import (${action}): ${inserted} inserted, ${updated} updated`);
   res.json({ ok: true, action, inserted, updated, errors });
 });
 

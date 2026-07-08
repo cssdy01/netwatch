@@ -4,7 +4,7 @@ const { v4: uuidv4 } = require('uuid');
 const db = require('../db');
 const { requireAuth } = require('../middleware/auth');
 const { validateTask } = require('../middleware/validateTask');
-const { log, audit } = require('../services/appLog');
+const { log } = require('../services/appLog');
 const { manualRun, testTask } = require('../services/monitoringService');
 
 const router = Router();
@@ -242,7 +242,6 @@ router.post('/', requireAuth, validateTask, (req, res) => {
 
   const created = db.prepare('SELECT * FROM tasks WHERE id=?').get(id);
   log('INFO', 'ADMIN', req.user.username, id, `Task "${name}" created`, null);
-  audit(req.user.username, 'TASK_CREATED', `Task "${name}" (${type}) created`);
   res.status(201).json(enrichTask(created));
 });
 
@@ -283,7 +282,6 @@ router.put('/:id', requireAuth, validateTask, (req, res) => {
   );
 
   log('INFO', 'ADMIN', req.user.username, req.params.id, `Task "${name}" updated`, null);
-  audit(req.user.username, 'TASK_UPDATED', `Task "${name}" updated`);
   const updated = db.prepare('SELECT * FROM tasks WHERE id=?').get(req.params.id);
   res.json(enrichTask(updated));
 });
@@ -296,7 +294,6 @@ router.delete('/:id', requireAuth, (req, res) => {
   db.prepare(`UPDATE tasks SET deleted_at=datetime('now'), updated_at=datetime('now') WHERE id=?`)
     .run(req.params.id);
   log('INFO', 'ADMIN', req.user.username, task.id, `Task "${task.name}" moved to bin`, null);
-  audit(req.user.username, 'TASK_DELETED', `Task "${task.name}" soft deleted`);
   res.json({ ok: true });
 });
 
@@ -308,7 +305,6 @@ router.post('/:id/restore', requireAuth, (req, res) => {
   db.prepare(`UPDATE tasks SET deleted_at=NULL, updated_at=datetime('now') WHERE id=?`)
     .run(req.params.id);
   log('INFO', 'ADMIN', req.user.username, task.id, `Task "${task.name}" restored`, null);
-  audit(req.user.username, 'TASK_RESTORED', `Task "${task.name}" restored`);
   res.json({ ok: true });
 });
 
@@ -319,7 +315,6 @@ router.delete('/:id/hard', requireAuth, (req, res) => {
 
   db.prepare('DELETE FROM tasks WHERE id=?').run(req.params.id);
   log('INFO', 'ADMIN', req.user.username, null, `Task "${task.name}" permanently deleted`, null);
-  audit(req.user.username, 'TASK_HARD_DELETED', `Task "${task.name}" permanently deleted`);
   res.json({ ok: true });
 });
 
@@ -327,7 +322,6 @@ router.delete('/:id/hard', requireAuth, (req, res) => {
 router.post('/:id/run', requireAuth, async (req, res) => {
   try {
     const result = await manualRun(req.params.id, req.user.username);
-    audit(req.user.username, 'MANUAL_RUN', `Manual run task ID ${req.params.id}`);
     res.json(result);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -345,8 +339,6 @@ router.patch('/:id/email-toggle', requireAuth, (req, res) => {
 
   log('INFO', 'ADMIN', req.user.username, task.id,
     `Email ${newVal ? 'enabled' : 'disabled'} for "${task.name}"`, null);
-  audit(req.user.username, 'EMAIL_TOGGLE',
-    `Email ${newVal ? 'enabled' : 'disabled'} for task "${task.name}"`);
   res.json({ email_enabled: newVal === 1 });
 });
 
@@ -366,7 +358,6 @@ router.patch('/:id/active-toggle', requireAuth, (req, res) => {
 
   log('INFO', 'ADMIN', req.user.username, task.id,
     `Task "${task.name}" ${newVal ? 'activated' : 'deactivated (paused)'}`, null);
-  audit(req.user.username, 'ACTIVE_TOGGLE',
     `Task "${task.name}" ${newVal ? 'activated' : 'deactivated'}`);
   res.json({ is_active: newVal === 1 });
 });

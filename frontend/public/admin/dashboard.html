@@ -204,15 +204,21 @@
 <!-- ══ LOGS ══ -->
 <div id="tab-logs" class="hidden">
   <div class="flex flex-wrap items-center justify-between mb-5 gap-4">
-    <h2 class="font-bold text-xl text-gray-900 tracking-tight">System Logs</h2>
-    <div class="flex flex-wrap items-center gap-2 p-1.5 bg-gray-50 border border-gray-200 rounded-xl shadow-sm">
-      <select id="dlRange" class="inp bg-white border-0 py-1.5 shadow-sm text-xs font-medium" style="width:auto;"><option value="today">Today</option><option value="7d">Last 7 Days</option><option value="15d">Last 15 Days</option></select>
-      <select id="dlCategory" class="inp bg-white border-0 py-1.5 shadow-sm text-xs font-medium" style="width:auto;"><option value="ALL">All Logs</option><option value="TASK_LOGS">Task Logs</option><option value="ADMIN_LOGS">Users Activity</option><option value="AUTH_LOGS">Auth Logs</option></select>
-      <div class="w-px h-6 bg-gray-300 mx-1"></div>
-      <button onclick="downloadLogs('json')" class="px-3 py-1.5 text-xs font-bold rounded-lg text-white bg-gray-700 hover:bg-gray-800 transition-colors">↓ JSON</button>
-      <button onclick="downloadLogs('csv')"  class="px-3 py-1.5 text-xs font-bold rounded-lg text-white bg-gray-700 hover:bg-gray-800 transition-colors">↓ CSV</button>
-    </div>
+  <h2 class="font-bold text-xl text-gray-900 tracking-tight">System Logs</h2>
+  <div class="flex flex-wrap items-center gap-2 p-1.5 bg-gray-50 border border-gray-200 rounded-xl shadow-sm">
+    <select id="logPageLimit" class="inp bg-white border-0 py-1.5 shadow-sm text-xs font-medium" style="width:auto;" onchange="reloadCurrentLogTab()">
+      <option value="10">10 per page</option>
+      <option value="25" selected>25 per page</option>
+      <option value="50">50 per page</option>
+      <option value="100">100 per page</option>
+    </select>
+    <div class="w-px h-6 bg-gray-300 mx-1"></div>
+    <select id="dlRange" class="inp bg-white border-0 py-1.5 shadow-sm text-xs font-medium" style="width:auto;"><option value="today">Today</option><option value="7d">Last 7 Days</option><option value="15d">Last 15 Days</option></select>
+    <select id="dlCategory" class="inp bg-white border-0 py-1.5 shadow-sm text-xs font-medium" style="width:auto;"><option value="ALL">All Logs</option><option value="TASK_LOGS">Task Logs</option><option value="ADMIN_LOGS">Users Activity</option><option value="AUTH_LOGS">Auth Logs</option></select>
+    <button onclick="downloadLogs('json')" class="px-3 py-1.5 text-xs font-bold rounded-lg text-white bg-gray-700 hover:bg-gray-800 transition-colors">↓ JSON</button>
+    <button onclick="downloadLogs('csv')"  class="px-3 py-1.5 text-xs font-bold rounded-lg text-white bg-gray-700 hover:bg-gray-800 transition-colors">↓ CSV</button>
   </div>
+</div>
   <div class="flex gap-2 mb-5">
     <button id="lstab-task"  class="stab-active px-4 py-2 text-sm transition-all" onclick="setLogTab('task',this)">Task Logs</button>
     <button id="lstab-admin" class="stab-inactive px-4 py-2 text-sm transition-all" onclick="setLogTab('admin',this)">Users Activity</button>
@@ -242,9 +248,10 @@
 
   <div id="logsSection-admin" class="hidden">
     <div class="flex flex-wrap items-center gap-3 mb-4 bg-white p-3 rounded-xl border border-gray-200 shadow-sm">
-      <select id="adminLogLevel" class="inp w-auto py-2 text-sm"><option value="">All Levels</option><option>INFO</option><option>WARN</option><option>ERROR</option></select>
-      <button onclick="loadAdminLogs()" class="px-4 py-2 text-sm font-bold rounded-lg bg-orange-500 hover:bg-orange-600 text-white shadow-sm transition-colors">Apply Filter</button>
-    </div>
+  <select id="adminLogLevel" class="inp w-auto py-2 text-sm"><option value="">All Levels</option><option>INFO</option><option>WARN</option><option>ERROR</option></select>
+  <input id="adminLogActor" placeholder="Search by Actor (Email)…" class="si w-48">
+  <button onclick="loadAdminLogs()" class="px-4 py-2 text-sm font-bold rounded-lg bg-orange-500 hover:bg-orange-600 text-white shadow-sm transition-colors">Apply Filter</button>
+</div>
     <div class="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm">
       <table class="w-full text-sm text-left">
         <thead class="text-[11px] font-bold uppercase tracking-wider text-gray-500 border-b border-gray-200 bg-gray-50">
@@ -261,9 +268,12 @@
   </div>
 
   <div id="logsSection-audit" class="hidden">
-    <div class="flex flex-wrap items-center gap-3 mb-4">
-      <button onclick="loadAuditLogs()" class="px-4 py-2 text-sm font-bold rounded-xl border border-gray-200 bg-white text-gray-700 shadow-sm hover:text-orange-500 hover:bg-gray-50 transition-colors">Refresh Logs</button>
-    </div>
+    
+    <div class="flex flex-wrap items-center gap-3 mb-4 bg-white p-3 rounded-xl border border-gray-200 shadow-sm">
+  <input id="auditLogActor" placeholder="Search by Actor (Email)…" class="si w-48">
+  <input id="auditLogAction" placeholder="Search by Action…" class="si w-48">
+  <button onclick="loadAuditLogs()" class="px-4 py-2 text-sm font-bold rounded-lg bg-orange-500 hover:bg-orange-600 text-white shadow-sm transition-colors">Apply Filter</button>
+</div>
     <div class="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm">
       <table class="w-full text-sm text-left">
         <thead class="text-[11px] font-bold uppercase tracking-wider text-gray-500 border-b border-gray-200 bg-gray-50">
@@ -280,12 +290,15 @@
   </div>
 
   <div class="mt-8 bg-white p-5 rounded-xl border border-gray-200 shadow-sm">
-    <div class="flex items-center justify-between mb-4 pb-3 border-b border-gray-100">
-      <h3 class="font-bold text-gray-800">Log Archives (end-of-day files)</h3>
-      <button onclick="loadArchives()" class="text-xs font-bold text-orange-500 hover:text-orange-600 bg-orange-50 px-2 py-1 rounded border border-orange-100">Refresh</button>
+  <div class="flex items-center justify-between mb-4 pb-3 border-b border-gray-100">
+    <h3 class="font-bold text-gray-800">Log Archives (end-of-day files)</h3>
+    <div>
+      <button onclick="loadArchives()" class="text-xs font-bold text-orange-500 hover:text-orange-600 bg-orange-50 px-2 py-1 rounded border border-orange-100">Refresh List</button>
+      <button onclick="triggerArchive()" class="text-xs font-bold text-white bg-gray-800 px-3 py-1.5 rounded hover:bg-gray-900 transition-colors shadow-sm ml-2">Force Archive Now</button>
     </div>
-    <div id="archivesList" class="text-sm text-gray-500 font-medium">Click Refresh to load archives.</div>
   </div>
+  <div id="archivesList" class="text-sm text-gray-500 font-medium">Click Refresh to load archives.</div>
+</div>
 </div>
 
 <!-- ══ SETTINGS ══ -->
@@ -867,10 +880,18 @@ async function doImportApply(action){
 }
 
 // ── LOGS ──
-let taskLogPage=0,adminLogPage=0,auditLogPage=0;
+function reloadCurrentLogTab() {
+  if (!document.getElementById('logsSection-task').classList.contains('hidden')) loadTaskLogs();
+  if (!document.getElementById('logsSection-admin').classList.contains('hidden')) loadAdminLogs();
+  if (!document.getElementById('logsSection-audit').classList.contains('hidden')) loadAuditLogs();
+}
+
+let taskLogPage=0, adminLogPage=0, auditLogPage=0;
+
 async function loadTaskLogs(){ taskLogPage=0; await _fetchTaskLogs(); }
 async function _fetchTaskLogs(){
-  const q={group:'TASK_LOGS',level:document.getElementById('taskLogLevel').value,task_name:document.getElementById('taskLogSearch').value,page:taskLogPage};
+  const limit = document.getElementById('logPageLimit').value;
+  const q={group:'TASK_LOGS', level:document.getElementById('taskLogLevel').value, task_name:document.getElementById('taskLogSearch').value, page:taskLogPage, limit};
   const data=await API.logs(q).catch(()=>({logs:[],total:0,totalPages:1}));
   document.getElementById('taskLogsBody').innerHTML=data.logs.length?data.logs.map(l=>`<tr class="border-b border-gray-100 hover:bg-gray-50"><td class="px-5 py-3 text-xs text-gray-500">${toIST(l.created_at)}</td><td class="px-5 py-3 text-xs font-bold">${l.level}</td><td class="px-5 py-3 text-gray-700 text-xs">${escHtml(l.category)}</td><td class="px-5 py-3 font-bold text-xs">${escHtml(l.task_name||'')}</td><td class="px-5 py-3 text-xs">${escHtml(l.message)}</td></tr>`).join('') : '<tr><td colspan="5" class="text-center py-10">No task logs found</td></tr>';
   document.getElementById('taskLogPageLabel').textContent=`Page ${taskLogPage+1}/${data.totalPages||1} (${data.total})`;
@@ -879,8 +900,8 @@ function changeTaskLogPage(d){ taskLogPage=Math.max(0,taskLogPage+d); _fetchTask
 
 async function loadAdminLogs(){ adminLogPage=0; await _fetchAdminLogs(); }
 async function _fetchAdminLogs(){
-  // Re-used for Users Activity Log
-  const q={group:'ADMIN_LOGS',level:document.getElementById('adminLogLevel').value,page:adminLogPage};
+  const limit = document.getElementById('logPageLimit').value;
+  const q={group:'ADMIN_LOGS', level:document.getElementById('adminLogLevel').value, actor:document.getElementById('adminLogActor').value, page:adminLogPage, limit};
   const data=await API.logs(q).catch(()=>({logs:[],total:0,totalPages:1}));
   document.getElementById('adminLogsBody').innerHTML=data.logs.length?data.logs.map(l=>`<tr class="border-b border-gray-100 hover:bg-gray-50"><td class="px-5 py-3 text-xs text-gray-500">${toIST(l.created_at)}</td><td class="px-5 py-3 text-xs font-bold">${l.level}</td><td class="px-5 py-3 font-medium text-xs">${escHtml(l.actor||'')}</td><td class="px-5 py-3 text-xs">${escHtml(l.message)}</td></tr>`).join('') : '<tr><td colspan="4" class="text-center py-10">No users activity logs found</td></tr>';
   document.getElementById('adminLogPageLabel').textContent=`Page ${adminLogPage+1}/${data.totalPages||1} (${data.total})`;
@@ -889,16 +910,27 @@ function changeAdminLogPage(d){ adminLogPage=Math.max(0,adminLogPage+d); _fetchA
 
 async function loadAuditLogs(){ auditLogPage=0; await _fetchAuditLogs(); }
 async function _fetchAuditLogs(){
-  const data=await API.audit({page:auditLogPage}).catch(()=>({logs:[],total:0,totalPages:1}));
+  const limit = document.getElementById('logPageLimit').value;
+  const q={actor:document.getElementById('auditLogActor').value, action:document.getElementById('auditLogAction').value, page:auditLogPage, limit};
+  const data=await API.audit(q).catch(()=>({logs:[],total:0,totalPages:1}));
   document.getElementById('auditLogsBody').innerHTML=data.logs.length?data.logs.map(l=>`<tr class="border-b border-gray-100 hover:bg-gray-50"><td class="px-5 py-3 text-xs text-gray-500">${toIST(l.created_at)}</td><td class="px-5 py-3 font-medium text-xs">${escHtml(l.actor||'')}</td><td class="px-5 py-3 font-medium text-xs">${escHtml(l.action||'')}</td><td class="px-5 py-3 text-xs">${escHtml(l.detail||'')}</td></tr>`).join('') : '<tr><td colspan="4" class="text-center py-10">No auth logs found</td></tr>';
   document.getElementById('auditLogPageLabel').textContent=`Page ${auditLogPage+1}/${data.totalPages||1} (${data.total})`;
 }
 function changeAuditLogPage(d){ auditLogPage=Math.max(0,auditLogPage+d); _fetchAuditLogs(); }
+
 function downloadLogs(fmt){ window.open(API.logsDownloadUrl(document.getElementById('dlRange').value, document.getElementById('dlCategory').value, fmt),'_blank'); }
 
 async function loadArchives(){
   const data=await API.logArchives().catch(()=>({archives:[]}));
   document.getElementById('archivesList').innerHTML=data.archives.length?data.archives.map(a=>`<div class="flex items-center gap-4 py-2 border-b text-xs"><span class="w-24">${escHtml(a.archive_date)}</span><span class="w-24 font-bold">${escHtml(a.category)}</span><span class="flex-1">${escHtml(a.filename)}</span><a href="${API.base()}/api/logs/archives/${a.id}/download" target="_blank" class="text-orange-500 font-bold">Download</a></div>`).join(''):'No archives yet.';
+}
+
+async function triggerArchive() {
+  document.getElementById('archivesList').innerHTML = '<span class="text-orange-500 font-bold">Generating end-of-day archives...</span>';
+  try {
+    await API.post('/api/logs/archives/trigger');
+    await loadArchives();
+  } catch(e) { document.getElementById('archivesList').innerHTML = '<span class="text-red-500">Failed to generate archives</span>'; }
 }
 
 // ── SETTINGS ──

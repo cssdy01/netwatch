@@ -4,7 +4,7 @@ const { v4: uuidv4 } = require('uuid');
 const bcrypt = require('bcryptjs');
 const db = require('../db');
 const { requireSuperAdmin } = require('../middleware/auth');
-const { log, audit } = require('../services/appLog');
+const { log } = require('../services/appLog');
 
 const router = Router();
 
@@ -26,7 +26,6 @@ router.post('/', requireSuperAdmin, async (req, res) => {
     .run(id, email, hash, role === 'superadmin' ? 'superadmin' : 'user');
 
   log('INFO', 'ADMIN', req.user.username, null, `Created user: ${email}`, null);
-  audit(req.user.username, 'USER_CREATED', `Created user ${email}`);
   res.json({ id, email, role });
 });
 
@@ -42,7 +41,6 @@ router.put('/:id', requireSuperAdmin, async (req, res) => {
     .run(hash, role === 'superadmin' ? 'superadmin' : 'user', req.params.id);
 
   log('INFO', 'ADMIN', req.user.username, null, `Updated user: ${user.email}`, null);
-  audit(req.user.username, 'USER_UPDATED', `Updated user ${user.email}`);
   res.json({ ok: true });
 });
 
@@ -56,7 +54,6 @@ router.delete('/:id', requireSuperAdmin, (req, res) => {
 
   db.prepare('DELETE FROM users WHERE id=?').run(req.params.id);
   log('INFO', 'ADMIN', req.user.username, null, `Deleted user: ${user.email}`, null);
-  audit(req.user.username, 'USER_DELETED', `Deleted user ${user.email}`);
   res.json({ ok: true });
 });
 
