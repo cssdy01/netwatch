@@ -240,9 +240,9 @@
       </table>
     </div>
     <div class="mt-4 flex items-center justify-center gap-4 bg-white py-2 rounded-xl border border-gray-200 shadow-sm w-max mx-auto px-4">
-      <button onclick="changeTaskLogPage(-1)" class="px-3 py-1.5 text-sm font-medium rounded-lg bg-gray-50 border border-gray-200 hover:bg-gray-100 text-gray-700">← Prev</button>
+      <button id="btnTaskPrev" onclick="changeTaskLogPage(-1)" class="px-3 py-1.5 text-sm font-medium rounded-lg bg-gray-50 border border-gray-200 hover:bg-gray-100 text-gray-700 disabled:opacity-50 disabled:cursor-not-allowed">← Prev</button>
       <span id="taskLogPageLabel" class="text-sm font-bold text-gray-600">Page 1</span>
-      <button onclick="changeTaskLogPage(1)"  class="px-3 py-1.5 text-sm font-medium rounded-lg bg-gray-50 border border-gray-200 hover:bg-gray-100 text-gray-700">Next →</button>
+      <button id="btnTaskNext" onclick="changeTaskLogPage(1)"  class="px-3 py-1.5 text-sm font-medium rounded-lg bg-gray-50 border border-gray-200 hover:bg-gray-100 text-gray-700 disabled:opacity-50 disabled:cursor-not-allowed">Next →</button>
     </div>
   </div>
 
@@ -261,9 +261,9 @@
       </table>
     </div>
     <div class="mt-4 flex items-center justify-center gap-4 bg-white py-2 rounded-xl border border-gray-200 shadow-sm w-max mx-auto px-4">
-      <button onclick="changeAdminLogPage(-1)" class="px-3 py-1.5 text-sm font-medium rounded-lg bg-gray-50 border border-gray-200 hover:bg-gray-100 text-gray-700">← Prev</button>
+      <button id="btnAdminPrev" onclick="changeAdminLogPage(-1)" class="px-3 py-1.5 text-sm font-medium rounded-lg bg-gray-50 border border-gray-200 hover:bg-gray-100 text-gray-700 disabled:opacity-50 disabled:cursor-not-allowed">← Prev</button>
       <span id="adminLogPageLabel" class="text-sm font-bold text-gray-600">Page 1</span>
-      <button onclick="changeAdminLogPage(1)"  class="px-3 py-1.5 text-sm font-medium rounded-lg bg-gray-50 border border-gray-200 hover:bg-gray-100 text-gray-700">Next →</button>
+      <button id="btnAdminNext" onclick="changeAdminLogPage(1)"  class="px-3 py-1.5 text-sm font-medium rounded-lg bg-gray-50 border border-gray-200 hover:bg-gray-100 text-gray-700 disabled:opacity-50 disabled:cursor-not-allowed">Next →</button>
     </div>
   </div>
 
@@ -283,9 +283,9 @@
       </table>
     </div>
     <div class="mt-4 flex items-center justify-center gap-4 bg-white py-2 rounded-xl border border-gray-200 shadow-sm w-max mx-auto px-4">
-      <button onclick="changeAuditLogPage(-1)" class="px-3 py-1.5 text-sm font-medium rounded-lg bg-gray-50 border border-gray-200 hover:bg-gray-100 text-gray-700">← Prev</button>
+      <button id="btnAuditPrev" onclick="changeAuditLogPage(-1)" class="px-3 py-1.5 text-sm font-medium rounded-lg bg-gray-50 border border-gray-200 hover:bg-gray-100 text-gray-700 disabled:opacity-50 disabled:cursor-not-allowed">← Prev</button>
       <span id="auditLogPageLabel" class="text-sm font-bold text-gray-600">Page 1</span>
-      <button onclick="changeAuditLogPage(1)"  class="px-3 py-1.5 text-sm font-medium rounded-lg bg-gray-50 border border-gray-200 hover:bg-gray-100 text-gray-700">Next →</button>
+      <button id="btnAuditNext" onclick="changeAuditLogPage(1)"  class="px-3 py-1.5 text-sm font-medium rounded-lg bg-gray-50 border border-gray-200 hover:bg-gray-100 text-gray-700 disabled:opacity-50 disabled:cursor-not-allowed">Next →</button>
     </div>
   </div>
 
@@ -873,6 +873,7 @@ async function doImportApply(action){
 }
 
 // ── LOGS ──
+// ── LOGS ──
 function reloadCurrentLogTab() {
   if (!document.getElementById('logsSection-task').classList.contains('hidden')) loadTaskLogs();
   if (!document.getElementById('logsSection-admin').classList.contains('hidden')) loadAdminLogs();
@@ -887,9 +888,19 @@ async function _fetchTaskLogs(){
   const q={group:'TASK_LOGS', level:document.getElementById('taskLogLevel').value, task_name:document.getElementById('taskLogSearch').value, page:taskLogPage, limit};
   const data=await API.logs(q).catch(()=>({logs:[],total:0,totalPages:1}));
   document.getElementById('taskLogsBody').innerHTML=data.logs.length?data.logs.map(l=>`<tr class="border-b border-gray-100 hover:bg-gray-50"><td class="px-5 py-3 text-xs text-gray-500">${toIST(l.created_at)}</td><td class="px-5 py-3 text-xs font-bold">${l.level}</td><td class="px-5 py-3 text-gray-700 text-xs">${escHtml(l.category)}</td><td class="px-5 py-3 font-bold text-xs">${escHtml(l.task_name||'')}</td><td class="px-5 py-3 text-xs">${escHtml(l.message)}</td></tr>`).join('') : '<tr><td colspan="5" class="text-center py-10">No task logs found</td></tr>';
-  document.getElementById('taskLogPageLabel').textContent=`Page ${taskLogPage+1}/${data.totalPages||1} (${data.total})`;
+  
+  const totalPages = data.totalPages || 1;
+  document.getElementById('taskLogPageLabel').textContent=`Page ${taskLogPage+1}/${totalPages} (${data.total})`;
+  
+  // Disable buttons if at boundaries
+  document.getElementById('btnTaskPrev').disabled = (taskLogPage === 0);
+  document.getElementById('btnTaskNext').disabled = (taskLogPage >= totalPages - 1);
 }
-function changeTaskLogPage(d){ taskLogPage=Math.max(0,taskLogPage+d); _fetchTaskLogs(); }
+function changeTaskLogPage(d){ 
+  taskLogPage += d; 
+  if (taskLogPage < 0) taskLogPage = 0;
+  _fetchTaskLogs(); 
+}
 
 async function loadAdminLogs(){ adminLogPage=0; await _fetchAdminLogs(); }
 async function _fetchAdminLogs(){
@@ -897,9 +908,19 @@ async function _fetchAdminLogs(){
   const q={group:'ADMIN_LOGS', level:document.getElementById('adminLogLevel').value, actor:document.getElementById('adminLogActor').value, page:adminLogPage, limit};
   const data=await API.logs(q).catch(()=>({logs:[],total:0,totalPages:1}));
   document.getElementById('adminLogsBody').innerHTML=data.logs.length?data.logs.map(l=>`<tr class="border-b border-gray-100 hover:bg-gray-50"><td class="px-5 py-3 text-xs text-gray-500">${toIST(l.created_at)}</td><td class="px-5 py-3 text-xs font-bold">${l.level}</td><td class="px-5 py-3 font-medium text-xs">${escHtml(l.actor||'')}</td><td class="px-5 py-3 text-xs">${escHtml(l.message)}</td></tr>`).join('') : '<tr><td colspan="4" class="text-center py-10">No users activity logs found</td></tr>';
-  document.getElementById('adminLogPageLabel').textContent=`Page ${adminLogPage+1}/${data.totalPages||1} (${data.total})`;
+  
+  const totalPages = data.totalPages || 1;
+  document.getElementById('adminLogPageLabel').textContent=`Page ${adminLogPage+1}/${totalPages} (${data.total})`;
+  
+  // Disable buttons if at boundaries
+  document.getElementById('btnAdminPrev').disabled = (adminLogPage === 0);
+  document.getElementById('btnAdminNext').disabled = (adminLogPage >= totalPages - 1);
 }
-function changeAdminLogPage(d){ adminLogPage=Math.max(0,adminLogPage+d); _fetchAdminLogs(); }
+function changeAdminLogPage(d){ 
+  adminLogPage += d; 
+  if (adminLogPage < 0) adminLogPage = 0;
+  _fetchAdminLogs(); 
+}
 
 async function loadAuditLogs(){ auditLogPage=0; await _fetchAuditLogs(); }
 async function _fetchAuditLogs(){
@@ -907,9 +928,20 @@ async function _fetchAuditLogs(){
   const q={actor:document.getElementById('auditLogActor').value, action:document.getElementById('auditLogAction').value, page:auditLogPage, limit};
   const data=await API.audit(q).catch(()=>({logs:[],total:0,totalPages:1}));
   document.getElementById('auditLogsBody').innerHTML=data.logs.length?data.logs.map(l=>`<tr class="border-b border-gray-100 hover:bg-gray-50"><td class="px-5 py-3 text-xs text-gray-500">${toIST(l.created_at)}</td><td class="px-5 py-3 font-medium text-xs">${escHtml(l.actor||'')}</td><td class="px-5 py-3 font-medium text-xs">${escHtml(l.action||'')}</td><td class="px-5 py-3 text-xs">${escHtml(l.detail||'')}</td></tr>`).join('') : '<tr><td colspan="4" class="text-center py-10">No auth logs found</td></tr>';
-  document.getElementById('auditLogPageLabel').textContent=`Page ${auditLogPage+1}/${data.totalPages||1} (${data.total})`;
+  
+  const totalPages = data.totalPages || 1;
+  document.getElementById('auditLogPageLabel').textContent=`Page ${auditLogPage+1}/${totalPages} (${data.total})`;
+  
+  // Disable buttons if at boundaries
+  document.getElementById('btnAuditPrev').disabled = (auditLogPage === 0);
+  document.getElementById('btnAuditNext').disabled = (auditLogPage >= totalPages - 1);
 }
-function changeAuditLogPage(d){ auditLogPage=Math.max(0,auditLogPage+d); _fetchAuditLogs(); }
+function changeAuditLogPage(d){ 
+  auditLogPage += d; 
+  if (auditLogPage < 0) auditLogPage = 0;
+  _fetchAuditLogs(); 
+}
+
 
 function downloadLogs(fmt){ window.open(API.logsDownloadUrl(document.getElementById('dlRange').value, document.getElementById('dlCategory').value, fmt),'_blank'); }
 
