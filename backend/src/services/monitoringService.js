@@ -215,14 +215,13 @@ async function runEscalationCheck() {
 
       const elapsed = Date.now() - new Date(inc.t0).getTime();
       const emailOn = task.email_enabled && task.email_enabled !== 0;
-      const lastError = db.prepare(`
-        SELECT error_raw FROM checks
-        WHERE task_id=? AND result='FAIL'
-        ORDER BY checked_at DESC LIMIT 1
-      `).get(task.id)?.error_raw || 'No recent error details';
+      const lastError = db.prepare(`SELECT error_raw FROM checks WHERE task_id=? AND result='FAIL' ORDER BY checked_at DESC LIMIT 1`).get(task.id)?.error_raw || 'No error details';
 
-      // L2 once after 48h from incident start
-      if (elapsed >= L2_DELAY_MS && !inc.l2_sent_at) {
+      // Use the task's custom dynamic timings (convert min to MS)
+      const dynamicL2Ms = (task.l2_delay_min || 2880) * 60 * 1000;
+      const dynamicL3Ms = (task.l3_repeat_min || 2880) * 60 * 1000;
+
+      if (elapsed >= dynamicL2Ms && !inc.l2_sent_at) {
         const sentAt = nowIso();
         if (emailOn) {
           try {

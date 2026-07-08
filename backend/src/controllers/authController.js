@@ -1,95 +1,70 @@
 // src/controllers/authController.js
-// Phase 1: Audit log actor is the actual username; AUTH category used consistently.
-
 const { Router } = require('express');
 const bcrypt = require('bcryptjs');
+const db = require('../db');
 const { signToken, requireAuth } = require('../middleware/auth');
 const { log, audit } = require('../services/appLog');
 
 const router = Router();
-
-// Simple in-memory rate limiter: 5 attempts per IP per minute
 const attempts = new Map();
-function rateLimit(req, res, next) {
-  const ip       = req.ip || req.socket.remoteAddress;
-  const now      = Date.now();
-  const windowMs = 60 * 1000;
-  const maxAtt   = 5;
 
+function rateLimit(req, res, next) {
+  const ip = req.ip || req.socket.remoteAddress;
+  const now = Date.now();
   const record = attempts.get(ip) || { count: 0, windowStart: now };
-  if (now - record.windowStart > windowMs) {
-    record.count       = 0;
-    record.windowStart = now;
-  }
+  if (now - record.windowStart > 60000) { record.count = 0; record.windowStart = now; }
   record.count++;
   attempts.set(ip, record);
-
-  if (record.count > maxAtt) {
-    log('WARN', 'AUTH', 'system', null, `Rate limit exceeded for IP ${ip}`, null);
-    return res.status(429).json({ error: 'Too many login attempts. Please wait a minute.' });
-  }
+  if (record.count > 5) return res.status(429).json({ error: 'Too many login attempts.' });
   next();
 }
 
-// POST /api/auth/login
 router.post('/login', rateLimit, async (req, res) => {
   const { username, password } = req.body;
-  const ip           = req.ip || req.socket.remoteAddress;
-  const expectedUser = process.env.ADMIN_USER;
-  const expectedHash = process.env.ADMIN_PASS_HASH;
+  const ip = req.ip || req.socket.remoteAddress;
 
-  if (!username || !password || username !== expectedUser) {
-    const actor = username || 'unknown';
-    log('WARN', 'AUTH', actor, null,
-      `Login failed — invalid credentials from IP ${ip}`, null);
-    audit(actor, 'LOGIN_FAILED', `Invalid credentials from ${ip}`);
+  if (!username || !password) {
+    audit(username || 'unknown', 'LOGIN_FAILED', `Missing credentials | IP: ${ip}`);
     return res.status(401).json({ error: 'Invalid credentials' });
   }
 
-  const valid = await bcrypt.compare(password, expectedHash);
+  const user = db.prepare('SELECT * FROM users WHERE email=?').get(username);
+  if (!user) {
+    audit(username, 'LOGIN_FAILED', `User not found | IP: ${ip}`);
+    return res.status(401).json({ error: 'Invalid credentials' });
+  }
+
+  const valid = await bcrypt.compare(password, user.password);
   if (!valid) {
-    log('WARN', 'AUTH', username, null,
-      `Login failed — wrong password from IP ${ip}`, null);
-    audit(username, 'LOGIN_FAILED', `Wrong password from ${ip}`);
+    audit(username, 'LOGIN_FAILED', `Wrong password | IP: ${ip}`);
     return res.status(401).json({ error: 'Invalid credentials' });
   }
 
-  const token = signToken({ username });
+  const token = signToken({ username: user.email, role: user.role });
   const hours = parseInt(process.env.SESSION_HOURS || '8');
 
-  res.cookie('netwatch_token', token, {
-    httpOnly: true,
-    sameSite: 'lax',
-    maxAge: hours * 3600 * 1000,
-  });
-
-  log('INFO', 'AUTH', username, null, `Login successful from IP ${ip}`, null);
-  audit(username, 'LOGIN_SUCCESS', `Successful login from ${ip}`);
-  res.json({ ok: true, username });
+  res.cookie('netwatch_token', token, { httpOnly: true, sameSite: 'lax', maxAge: hours * 3600 * 1000 });
+  
+  log('INFO', 'AUTH', user.email, null, `Login successful from IP ${ip}`, null);
+  audit(user.email, 'LOGIN_SUCCESS', `Email ID: ${user.email} | IP: ${ip}`);
+  res.json({ ok: true, username: user.email, role: user.role });
 });
 
-// POST /api/auth/logout
 router.post('/logout', (req, res) => {
-  // Try to get the username from token for the audit log
-  let username = 'admin';
+  let username = 'unknown';
   try {
-    const jwt   = require('jsonwebtoken');
-    const token = req.cookies?.netwatch_token;
-    if (token) {
-      const payload = jwt.decode(token);
-      if (payload?.username) username = payload.username;
+    const jwt = require('jsonwebtoken');
+    if (req.cookies?.netwatch_token) {
+      username = jwt.decode(req.cookies.netwatch_token)?.username || username;
     }
   } catch {}
-
   res.clearCookie('netwatch_token');
-  log('INFO', 'AUTH', username, null, 'Logout', null);
-  audit(username, 'LOGOUT', 'Session ended');
+  audit(username, 'LOGOUT', `Session ended | Email ID: ${username}`);
   res.json({ ok: true });
 });
 
-// GET /api/auth/me
 router.get('/me', requireAuth, (req, res) => {
-  res.json({ username: req.user.username });
+  res.json({ username: req.user.username, role: req.user.role });
 });
 
 module.exports = router;

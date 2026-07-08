@@ -1,36 +1,4 @@
-// src/agents/webAgent.js — Phase 4 definitive fix
-//
-// CONFIRMED ROOT CAUSES of hostname monitoring failure:
-//
-// CAUSE 1 — "Invalid IP address: undefined" (test endpoint):
-//   POST /api/tasks/test passes req.body directly to dispatchAgent().
-//   host_mapping_enabled was sent as the string "true" from the form,
-//   isValidIpv4() passed, but the Node http.Agent `lookup` override has
-//   a subtle incompatibility with how axios threads the agent through
-//   http.request in Node 20: the lookup is not guaranteed to be called
-//   for the DNS step before connection, producing "Invalid IP address: undefined"
-//   when the lookup callback receives wrong arguments in some code paths.
-//
-// CAUSE 2 — "Connection timeout after 15000ms" (scheduled + manual run):
-//   tasksController.js POST/PUT handlers never saved host_mapping_enabled,
-//   host_mapping_hostname, or host_mapping_ip to the database (those fields
-//   were missing from both the INSERT and UPDATE SQL statements).
-//   So every task had host_mapping_enabled = 0 (default) even after the
-//   admin filled in and saved the mapping. The agent never applied any
-//   mapping, axios tried real DNS for dev.uimcn.tsaro.com → DNS failed
-//   → ENOTFOUND or connection timeout.
-//
-// THE DEFINITIVE FIX — URL-rewrite strategy (100% reliable):
-//   Instead of overriding the DNS lookup (which depends on internal axios/Node
-//   implementation details), we:
-//     1. Rewrite the URL: replace the hostname with the mapped IP in the actual
-//        request URL so Node never needs to do a DNS lookup at all.
-//     2. Set the HTTP Host header explicitly to the original hostname so the
-//        server responds correctly (virtual hosting, JSF context roots, etc.).
-//     3. For HTTPS, also set servername (SNI) to the original hostname.
-//   This is the same technique used by curl's --resolve flag and is 100% portable
-//   across all Node versions, all axios versions, and all agent configurations.
-
+// src/agents/webAgent.js
 const axios  = require('axios');
 const https  = require('https');
 
@@ -61,18 +29,6 @@ function parseUrlParts(urlStr) {
   }
 }
 
-/**
- * Rewrite a URL by replacing its hostname with a mapped IP.
- * The resulting URL connects directly to the IP while the original
- * hostname is preserved in the Host header.
- *
- * Example:
- *   original:  http://dev.uimcn.tsaro.com:31500/Inventory/faces/login.jspx
- *   mappedIp:  192.168.108.176
- *   rewritten: http://192.168.108.176:31500/Inventory/faces/login.jspx
- *
- * Host header is set to: dev.uimcn.tsaro.com:31500
- */
 function rewriteUrlToIp(urlStr, mappedIp) {
   const parts = parseUrlParts(urlStr);
   if (!parts) return urlStr;
@@ -84,15 +40,6 @@ function rewriteUrlToIp(urlStr, mappedIp) {
   return `${parts.protocol}//${mappedIp}${portStr}${parts.pathname}${parts.search}`;
 }
 
-// ── single-URL check ───────────────────────────────────────────────────────────
-
-/**
- * Check one URL, optionally using task-level host mapping.
- *
- * @param {string|object} urlConfig   URL string or { url, expected_status, timeout_sec }
- * @param {number}        defaultTimeout  seconds
- * @param {object|null}   mapping  { enabled, hostname, ip } — from the task row
- */
 async function checkUrl(urlConfig, defaultTimeout = 15, mapping = null) {
   const originalUrl    = typeof urlConfig === 'string' ? urlConfig : urlConfig.url;
   const expectedStatus = typeof urlConfig === 'object' ? (urlConfig.expected_status || null) : null;
@@ -130,7 +77,6 @@ async function checkUrl(urlConfig, defaultTimeout = 15, mapping = null) {
     const defaultPort = originalParts.protocol === 'https:' ? '443' : '80';
 
     // Set the Host header to the original hostname (with port if non-default)
-    // This makes the server think it's being accessed by hostname
     const hostHeader = (port && port !== defaultPort)
       ? `${originalParts.hostname}:${port}`
       : originalParts.hostname;
@@ -191,7 +137,6 @@ async function checkUrl(urlConfig, defaultTimeout = 15, mapping = null) {
     } else if (err.code === 'ECONNRESET') {
       errorRaw = `Connection reset by server${mapInfo} (${originalUrl})`;
     } else if (err.code === 'DEPTH_ZERO_SELF_SIGNED_CERT' || err.code === 'UNABLE_TO_VERIFY_LEAF_SIGNATURE') {
-      // Should not happen with rejectUnauthorized:false, but handle defensively
       errorRaw = `TLS certificate error${mapInfo} (${originalUrl}) — ${err.message}`;
     }
 
@@ -199,42 +144,15 @@ async function checkUrl(urlConfig, defaultTimeout = 15, mapping = null) {
   }
 }
 
-// ── main entry point ───────────────────────────────────────────────────────────
-
-/**
- * Run all URLs for an APPLICATION task.
- * Reads host mapping from the task row — works for both:
- *   - Scheduled runs: task = DB row (has host_mapping_* columns)
- *   - Manual runs:    task = DB row (same)
- *   - Test endpoint:  task = req.body (has host_mapping_* from form)
- */
 async function run(task) {
-  let urls = [];
-  try {
-    const rawUrls = task.urls;
-    urls = typeof rawUrls === 'string'
-      ? JSON.parse(rawUrls)
-      : (Array.isArray(rawUrls) ? rawUrls : []);
-  } catch {
+  if (!task.url) {
     return {
       result: 'FAIL', responseMs: 0,
-      errorRaw: 'Invalid URLs configuration — JSON parse error',
+      errorRaw: 'No URL configured for this application task',
       endpointResults: null,
     };
   }
 
-  if (!urls.length) {
-    return {
-      result: 'FAIL', responseMs: 0,
-      errorRaw: 'No URLs configured for this application task',
-      endpointResults: null,
-    };
-  }
-
-  // Safely extract host mapping fields — handle all incoming types:
-  //   - boolean true/false (from JSON body)
-  //   - string "true"/"false"/"1"/"0" (from form-encoded body)
-  //   - integer 0/1 (from SQLite DB row)
   const rawEnabled = task.host_mapping_enabled;
   const mappingEnabled = rawEnabled === true ||
                          rawEnabled === 1    ||
@@ -247,7 +165,7 @@ async function run(task) {
     ip:       String(task.host_mapping_ip       || '').trim(),
   };
 
-  // Validate mapping config if enabled — give a clear error immediately
+  // Validate mapping config if enabled
   if (mapping.enabled) {
     if (!mapping.hostname) {
       return {
@@ -265,22 +183,24 @@ async function run(task) {
     }
   }
 
-  // Check all URLs concurrently, passing the mapping only when enabled
-  const results = await Promise.all(
-    urls.map(u => checkUrl(u, 15, mapping.enabled ? mapping : null))
-  );
+  const urlConfig = {
+    url: task.url,
+    expected_status: task.expected_status || null,
+    timeout_sec: task.timeout_sec || 15
+  };
 
-  const failed  = results.filter(r => r.result === 'FAIL');
-  const avgMs   = results.length
-    ? Math.round(results.reduce((s, r) => s + (r.responseMs || 0), 0) / results.length)
-    : 0;
-  const overall = failed.length > 0 ? 'FAIL' : 'PASS';
+  const r = await checkUrl(urlConfig, 15, mapping.enabled ? mapping : null);
+
+  // SPAM FIX: Clean internal server IP mapping descriptions from the final output so it doesn't trigger Spam/Junk filters
+  if (r.errorRaw) {
+    r.errorRaw = r.errorRaw.replace(/\(hostname.*?mapped to.*?\)/i, '[Host Mapping Active]');
+  }
 
   return {
-    result:          overall,
-    responseMs:      avgMs,
-    errorRaw:        failed.length ? failed.map(f => `[${f.url}] ${f.errorRaw}`).join('\n') : null,
-    endpointResults: results,
+    result:          r.result,
+    responseMs:      r.responseMs,
+    errorRaw:        r.errorRaw,
+    endpointResults: [r], // Wrap single result in array to maintain backwards compatibility in the UI checks table
   };
 }
 

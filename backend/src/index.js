@@ -1,11 +1,10 @@
-// src/index.js — NetWatch Backend entry point
-// Phase 3: Removed /api/host-mappings global route.
-//           Host mapping is now per-task (stored on the task row).
+// src/index.js
 require('dotenv').config();
 const express      = require('express');
 const cors         = require('cors');
 const cookieParser = require('cookie-parser');
 const bcrypt       = require('bcryptjs');
+const { v4: uuidv4 } = require('uuid');
 const db           = require('./db');
 const { log }      = require('./services/appLog');
 const { startSchedulers } = require('./services/monitoringService');
@@ -26,10 +25,10 @@ app.get('/healthz', (_req, res) => res.json({
 }));
 
 app.use('/api/auth',   require('./controllers/authController'));
+app.use('/api/users',  require('./controllers/usersController'));
 app.use('/api/tasks',  require('./controllers/tasksController'));
 app.use('/api/logs',   require('./controllers/logsController'));
 app.use('/api/backup', require('./controllers/backupController'));
-// NOTE: /api/host-mappings removed — host mapping is now per-task
 
 app.use((err, _req, res, _next) => {
   console.error('[Express Error]', err.message);
@@ -38,9 +37,7 @@ app.use((err, _req, res, _next) => {
 
 function nowIST() {
   return new Date().toLocaleString('en-IN', {
-    timeZone: 'Asia/Kolkata',
-    year: 'numeric', month: '2-digit', day: '2-digit',
-    hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false,
+    timeZone: 'Asia/Kolkata', hour12: false,
   }).replace(/\//g, '-') + ' IST';
 }
 
@@ -51,12 +48,19 @@ async function startup() {
     console.error('[STARTUP] JWT_SECRET must be >= 32 chars'); process.exit(1);
   }
 
-  process.env.ADMIN_PASS_HASH = await bcrypt.hash(process.env.ADMIN_PASS, 12);
+  // Seed superadmin from ENV to DB
+  const adminUser = process.env.ADMIN_USER;
+  const adminPassHash = await bcrypt.hash(process.env.ADMIN_PASS, 12);
+  const existing = db.prepare('SELECT id FROM users WHERE email=?').get(adminUser);
+  if (!existing) {
+    db.prepare('INSERT INTO users (id, email, password, role) VALUES (?, ?, ?, ?)').run(uuidv4(), adminUser, adminPassHash, 'superadmin');
+  } else {
+    db.prepare('UPDATE users SET password=?, role=? WHERE email=?').run(adminPassHash, 'superadmin', adminUser);
+  }
 
   app.listen(PORT, '0.0.0.0', () => {
-    console.log(`[NetWatch] Backend on port ${PORT} — ${nowIST()}`);
-    log('INFO', 'ADMIN', 'system', null,
-      `NetWatch started on port ${PORT} — ${nowIST()}`, `Node ${process.version}`);
+    console.log(`[NetWatch] Backend on port ${PORT} ΓÇö ${nowIST()}`);
+    log('INFO', 'ADMIN', 'system', null, `NetWatch started on port ${PORT} ΓÇö ${nowIST()}`, `Node ${process.version}`);
   });
 
   startSchedulers();

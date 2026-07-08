@@ -255,7 +255,7 @@ router.post('/import-preview', requireAuth, upload.single('file'), async (req, r
 // ── IMPORT APPLY ───────────────────────────────────────────────────────────────
 
 router.post('/import-apply', requireAuth, (req, res) => {
-  const { session_id, action } = req.body;
+  const { session_id, action, selected_ping_ids, selected_app_ids } = req.body;
 
   if (!session_id) return res.status(400).json({ error: 'session_id is required' });
   if (!['insert_only','update_only','insert_and_update','cancel'].includes(action))
@@ -282,6 +282,16 @@ router.post('/import-apply', requireAuth, (req, res) => {
 
   let inserted = 0, updated = 0;
   const errors = [];
+
+  // Filter the session payload based on passed arrays from frontend
+  if (selected_ping_ids) {
+    preview.ping.toInsert = preview.ping.toInsert.filter(r => selected_ping_ids.includes(r.name));
+    preview.ping.toUpdate = preview.ping.toUpdate.filter(r => selected_ping_ids.includes(r.id));
+  }
+  if (selected_app_ids) {
+    preview.application.toInsert = preview.application.toInsert.filter(r => selected_app_ids.includes(r.name));
+    preview.application.toUpdate = preview.application.toUpdate.filter(r => selected_app_ids.includes(r.id));
+  }
 
 const applyAll = db.transaction(() => {
     if (doInsert) {

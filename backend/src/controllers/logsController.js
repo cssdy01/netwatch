@@ -143,10 +143,11 @@ router.get('/app', requireAuth, (req, res) => {
   } else if (group === 'ADMIN_LOGS') {
     where.push(`category IN (${ADMIN_CATEGORIES.map(() => '?').join(',')})`);
     params.push(...ADMIN_CATEGORIES);
-  } else {
-    if (level    && level    !== 'ALL') { where.push('level=?');          params.push(level); }
-    if (category && category !== 'ALL') { where.push('category=?');       params.push(category); }
   }
+
+  // FIXED: These now apply regardless of whether a group was passed
+  if (level && level !== 'ALL') { where.push('level=?'); params.push(level); }
+  if (category && category !== 'ALL') { where.push('category=?'); params.push(category); }
   if (task_name) { where.push('task_name LIKE ?'); params.push(`%${task_name}%`); }
 
   const whereClause = where.length ? `WHERE ${where.join(' AND ')}` : '';

@@ -1,4 +1,4 @@
-// src/middleware/auth.js — JWT authentication middleware
+// src/middleware/auth.js
 const jwt = require('jsonwebtoken');
 
 const JWT_SECRET = () => process.env.JWT_SECRET || 'dev-secret-change-this';
@@ -16,9 +16,18 @@ function requireAuth(req, res, next) {
   }
 }
 
+function requireSuperAdmin(req, res, next) {
+  requireAuth(req, res, () => {
+    if (req.user.role !== 'superadmin') {
+      return res.status(403).json({ error: 'Access denied: superadmin only' });
+    }
+    next();
+  });
+}
+
 function signToken(payload) {
   const hours = parseInt(process.env.SESSION_HOURS || '8');
   return jwt.sign(payload, JWT_SECRET(), { expiresIn: `${hours}h` });
 }
 
-module.exports = { requireAuth, signToken };
+module.exports = { requireAuth, requireSuperAdmin, signToken };

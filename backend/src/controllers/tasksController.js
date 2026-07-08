@@ -1,11 +1,4 @@
-// src/controllers/tasksController.js — Phase 4
-// CRITICAL FIX: POST and PUT handlers now save host_mapping_enabled,
-// host_mapping_hostname, host_mapping_ip to the database.
-// This was the primary reason hostname monitoring never worked even after
-// the admin correctly filled in and saved the mapping in the UI — the
-// fields were simply never written to the DB, so every task appeared to
-// have mapping disabled at check time.
-
+// src/controllers/tasksController.js
 const { Router } = require('express');
 const { v4: uuidv4 } = require('uuid');
 const db = require('../db');
@@ -38,16 +31,13 @@ function enrichTask(task) {
     email_enabled:         task.email_enabled === 1,
     is_vm:                 task.is_vm === 1,
     is_active:             task.is_active !== 0,
-    // Booleanise host mapping for frontend
     host_mapping_enabled:  task.host_mapping_enabled === 1,
     host_mapping_hostname: task.host_mapping_hostname || '',
     host_mapping_ip:       task.host_mapping_ip       || '',
-    urls:                  task.urls ? JSON.parse(task.urls) : null,
     last_result:           lastCheck?.result       || null,
     last_response_ms:      lastCheck?.response_ms  || null,
     last_error_raw:        lastCheck?.error_raw    || null,
-    last_endpoint_results: lastCheck?.endpoint_results
-                             ? JSON.parse(lastCheck.endpoint_results) : null,
+    last_endpoint_results: lastCheck?.endpoint_results ? JSON.parse(lastCheck.endpoint_results) : null,
     last_checked_at:       lastCheck?.checked_at   || null,
     incident_duration:     incidentDuration,
     t0:                    incident?.t0             || null,
@@ -117,16 +107,16 @@ router.get('/public/:id', (req, res) => {
     os_type:   task.os_type,
     status:    task.status,
     is_active: task.is_active !== 0,
-    urls:      task.urls ? JSON.parse(task.urls) : null,
-    // Expose host mapping info on public detail (useful for debugging / display)
+    url:             task.url,
+    expected_status: task.expected_status,
+    timeout_sec:     task.timeout_sec,
     host_mapping_enabled:  task.host_mapping_enabled === 1,
     host_mapping_hostname: task.host_mapping_hostname || '',
     host_mapping_ip:       task.host_mapping_ip       || '',
     last_result:           lastCheck?.result        || null,
     last_response_ms:      lastCheck?.response_ms   || null,
     last_error_raw:        lastCheck?.error_raw     || null,
-    last_endpoint_results: lastCheck?.endpoint_results
-                             ? JSON.parse(lastCheck.endpoint_results) : null,
+    last_endpoint_results: lastCheck?.endpoint_results ? JSON.parse(lastCheck.endpoint_results) : null,
     last_checked_at:       lastCheck?.checked_at    || null,
     incident_duration:     incidentDuration,
     t0:        incident?.t0 || null,
@@ -145,8 +135,6 @@ router.get('/public/:id', (req, res) => {
 });
 
 // POST /api/tasks/test
-// Passes the full req.body (including host_mapping_* fields) straight to the
-// monitoring agent — no DB write, no email.
 router.post('/test', requireAuth, async (req, res) => {
   try {
     const result = await testTask(req.body);
@@ -204,10 +192,8 @@ function parseHostMapping(body, type) {
   if (type !== 'APPLICATION') {
     return { host_mapping_enabled: 0, host_mapping_hostname: '', host_mapping_ip: '' };
   }
-
   const raw = body.host_mapping_enabled;
   const enabled = (raw === true || raw === 1 || raw === '1' || raw === 'true') ? 1 : 0;
-
   return {
     host_mapping_enabled:  enabled,
     host_mapping_hostname: enabled ? String(body.host_mapping_hostname || '').trim() : '',
@@ -218,36 +204,32 @@ function parseHostMapping(body, type) {
 // POST /api/tasks — CREATE
 router.post('/', requireAuth, validateTask, (req, res) => {
   const {
-    name, type, target, urls, os_type, is_vm,
-    interval_min, n_threshold, email_l1, email_l2, email_l3, email_enabled, is_active,
+    name, type, target, url, expected_status, timeout_sec, os_type, is_vm,
+    interval_min, n_threshold, l2_delay_min, l3_repeat_min,
+    email_l1, email_l2, email_l3, email_enabled, is_active,
   } = req.body;
 
   const DEFAULT_N = parseInt(process.env.DEFAULT_N_THRESHOLD || '2');
   const id = uuidv4();
   const hm = parseHostMapping(req.body, type);
 
-  // Normalise urls — may arrive as JSON string or already-parsed array
-  let urlsJson = null;
-  if (urls) {
-    const parsed = typeof urls === 'string' ? JSON.parse(urls) : urls;
-    urlsJson = JSON.stringify(parsed);
-  }
-
   db.prepare(`
     INSERT INTO tasks (
-      id, name, type, target, urls, os_type, is_vm,
-      interval_min, n_threshold,
+      id, name, type, target, url, expected_status, timeout_sec, os_type, is_vm,
+      interval_min, n_threshold, l2_delay_min, l3_repeat_min,
       email_l1, email_l2, email_l3, email_enabled, is_active,
       host_mapping_enabled, host_mapping_hostname, host_mapping_ip
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `).run(
-    id, name.trim(), type, target.trim(), urlsJson,
+    id, name.trim(), type, target.trim(), url ? url.trim() : '', 
+    expected_status ? parseInt(expected_status) : null, 
+    timeout_sec ? parseInt(timeout_sec) : 15, 
     os_type || null, is_vm ? 1 : 0,
-    parseInt(interval_min),
-    n_threshold ? parseInt(n_threshold) : DEFAULT_N,
+    parseInt(interval_min), n_threshold ? parseInt(n_threshold) : DEFAULT_N,
+    parseInt(l2_delay_min), parseInt(l3_repeat_min),
     email_l1 || '', email_l2 || '', email_l3 || '',
     email_enabled === false || email_enabled === 0 ? 0 : 1,
-    is_active  === false || is_active  === 0 ? 0 : 1,
+    is_active === false || is_active === 0 ? 0 : 1,
     hm.host_mapping_enabled, hm.host_mapping_hostname, hm.host_mapping_ip
   );
 
@@ -263,32 +245,29 @@ router.put('/:id', requireAuth, validateTask, (req, res) => {
   if (!task) return res.status(404).json({ error: 'Task not found' });
 
   const {
-    name, type, target, urls, os_type, is_vm,
-    interval_min, n_threshold, email_l1, email_l2, email_l3, email_enabled, is_active,
+    name, type, target, url, expected_status, timeout_sec, os_type, is_vm,
+    interval_min, n_threshold, l2_delay_min, l3_repeat_min,
+    email_l1, email_l2, email_l3, email_enabled, is_active,
   } = req.body;
 
   const DEFAULT_N = parseInt(process.env.DEFAULT_N_THRESHOLD || '2');
   const hm = parseHostMapping(req.body, type);
 
-  let urlsJson = null;
-  if (urls) {
-    const parsed = typeof urls === 'string' ? JSON.parse(urls) : urls;
-    urlsJson = JSON.stringify(parsed);
-  }
-
   db.prepare(`
     UPDATE tasks SET
-      name=?, type=?, target=?, urls=?, os_type=?, is_vm=?,
-      interval_min=?, n_threshold=?,
+      name=?, type=?, target=?, url=?, expected_status=?, timeout_sec=?, os_type=?, is_vm=?,
+      interval_min=?, n_threshold=?, l2_delay_min=?, l3_repeat_min=?,
       email_l1=?, email_l2=?, email_l3=?, email_enabled=?, is_active=?,
       host_mapping_enabled=?, host_mapping_hostname=?, host_mapping_ip=?,
       updated_at=datetime('now')
     WHERE id=?
   `).run(
-    name.trim(), type, target.trim(), urlsJson,
+    name.trim(), type, target.trim(), url ? url.trim() : '', 
+    expected_status ? parseInt(expected_status) : null, 
+    timeout_sec ? parseInt(timeout_sec) : 15, 
     os_type || null, is_vm ? 1 : 0,
-    parseInt(interval_min),
-    n_threshold ? parseInt(n_threshold) : DEFAULT_N,
+    parseInt(interval_min), n_threshold ? parseInt(n_threshold) : DEFAULT_N,
+    parseInt(l2_delay_min), parseInt(l3_repeat_min),
     email_l1 || '', email_l2 || '', email_l3 || '',
     email_enabled === false || email_enabled === 0 ? 0 : 1,
     is_active  === false || is_active  === 0 ? 0 : 1,
@@ -373,7 +352,6 @@ router.patch('/:id/active-toggle', requireAuth, (req, res) => {
   db.prepare(`UPDATE tasks SET is_active=?, updated_at=datetime('now') WHERE id=?`)
     .run(newVal, task.id);
 
-  // Deactivating — clear any open incident and reset CFC
   if (newVal === 0) {
     db.prepare('DELETE FROM incident_state WHERE task_id=?').run(task.id);
     db.prepare(`UPDATE tasks SET cfc=0, status='OK', updated_at=datetime('now') WHERE id=?`).run(task.id);

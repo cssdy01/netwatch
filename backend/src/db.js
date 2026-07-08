@@ -1,9 +1,4 @@
-// src/db.js — SQLite database setup + migrations
-// Phase 3 changes:
-//   - tasks table: added host_mapping_enabled, host_mapping_hostname, host_mapping_ip
-//   - host_mappings global table retained (backward compat) but no longer used by monitoring
-//   - Safe migrations: ALTER TABLE only when column absent
-
+// src/db.js
 const Database = require('better-sqlite3');
 const path = require('path');
 const fs   = require('fs');
@@ -21,19 +16,29 @@ db.pragma('journal_mode = WAL');
 db.pragma('synchronous = NORMAL');
 db.pragma('foreign_keys = ON');
 
-// ── Schema ────────────────────────────────────────────────────────────────────
-
 db.exec(`
+  CREATE TABLE IF NOT EXISTS users (
+    id         TEXT PRIMARY KEY,
+    email      TEXT UNIQUE NOT NULL,
+    password   TEXT NOT NULL,
+    role       TEXT NOT NULL CHECK(role IN ('superadmin','user')),
+    created_at TEXT NOT NULL DEFAULT (datetime('now'))
+  );
+
   CREATE TABLE IF NOT EXISTS tasks (
     id                    TEXT PRIMARY KEY,
     name                  TEXT NOT NULL,
     type                  TEXT NOT NULL CHECK(type IN ('PING','APPLICATION')),
     target                TEXT NOT NULL,
-    urls                  TEXT,
+    url                   TEXT DEFAULT '',
+    expected_status       INTEGER,
+    timeout_sec           INTEGER DEFAULT 15,
     os_type               TEXT,
     is_vm                 INTEGER DEFAULT 0,
     interval_min          INTEGER NOT NULL DEFAULT 5,
     n_threshold           INTEGER NOT NULL DEFAULT 2,
+    l2_delay_min          INTEGER NOT NULL DEFAULT 2880,
+    l3_repeat_min         INTEGER NOT NULL DEFAULT 2880,
     email_l1              TEXT DEFAULT '',
     email_l2              TEXT DEFAULT '',
     email_l3              TEXT DEFAULT '',
@@ -92,16 +97,6 @@ db.exec(`
     detail     TEXT
   );
 
-  -- Kept for backward compat; no longer used by monitoring logic
-  CREATE TABLE IF NOT EXISTS host_mappings (
-    id         TEXT PRIMARY KEY,
-    hostname   TEXT NOT NULL UNIQUE,
-    ip_address TEXT NOT NULL,
-    note       TEXT,
-    created_at TEXT NOT NULL DEFAULT (datetime('now')),
-    updated_at TEXT NOT NULL DEFAULT (datetime('now'))
-  );
-
   CREATE TABLE IF NOT EXISTS log_archives (
     id           TEXT PRIMARY KEY,
     archive_date TEXT NOT NULL,
@@ -131,80 +126,36 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_log_archives_date  ON log_archives(archive_date);
 `);
 
-// ── Safe column migrations ────────────────────────────────────────────────────
-
+// Safe column migrations
 const cols = db.prepare('PRAGMA table_info(tasks)').all().map(c => c.name);
+
+if (!cols.includes('url')) {
+  db.exec("ALTER TABLE tasks ADD COLUMN url TEXT DEFAULT ''");
+  db.exec('ALTER TABLE tasks ADD COLUMN expected_status INTEGER');
+  db.exec('ALTER TABLE tasks ADD COLUMN timeout_sec INTEGER DEFAULT 15');
+  db.exec('ALTER TABLE tasks ADD COLUMN l2_delay_min INTEGER NOT NULL DEFAULT 2880');
+  db.exec('ALTER TABLE tasks ADD COLUMN l3_repeat_min INTEGER NOT NULL DEFAULT 2880');
+  console.log('[DB] Migration: added single url and custom email timings');
+}
 
 if (!cols.includes('is_active')) {
   db.exec('ALTER TABLE tasks ADD COLUMN is_active INTEGER DEFAULT 1');
-  console.log('[DB] Migration: added is_active');
 }
-
-// Phase 3: per-task host mapping columns
 if (!cols.includes('host_mapping_enabled')) {
   db.exec('ALTER TABLE tasks ADD COLUMN host_mapping_enabled INTEGER DEFAULT 0');
-  console.log('[DB] Migration: added host_mapping_enabled');
-}
-if (!cols.includes('host_mapping_hostname')) {
   db.exec("ALTER TABLE tasks ADD COLUMN host_mapping_hostname TEXT DEFAULT ''");
-  console.log('[DB] Migration: added host_mapping_hostname');
-}
-if (!cols.includes('host_mapping_ip')) {
   db.exec("ALTER TABLE tasks ADD COLUMN host_mapping_ip TEXT DEFAULT ''");
-  console.log('[DB] Migration: added host_mapping_ip');
 }
-
-// ── Value-range fixes ─────────────────────────────────────────────────────────
 
 const MIN_INTERVAL = 3, MAX_INTERVAL = 15;
+db.prepare('UPDATE tasks SET interval_min=? WHERE interval_min<?').run(MIN_INTERVAL, MIN_INTERVAL);
+db.prepare('UPDATE tasks SET interval_min=? WHERE interval_min>?').run(MAX_INTERVAL, MAX_INTERVAL);
+db.prepare('UPDATE tasks SET n_threshold=1 WHERE n_threshold<1').run();
+db.prepare('UPDATE tasks SET n_threshold=5 WHERE n_threshold>5').run();
 
-const fLow = db.prepare('UPDATE tasks SET interval_min=? WHERE interval_min<?').run(MIN_INTERVAL, MIN_INTERVAL);
-if (fLow.changes)  console.log(`[DB] Fixed ${fLow.changes} task(s) with interval_min < ${MIN_INTERVAL}`);
-
-const fHigh = db.prepare('UPDATE tasks SET interval_min=? WHERE interval_min>?').run(MAX_INTERVAL, MAX_INTERVAL);
-if (fHigh.changes) console.log(`[DB] Fixed ${fHigh.changes} task(s) with interval_min > ${MAX_INTERVAL}`);
-
-const fTL = db.prepare('UPDATE tasks SET n_threshold=1 WHERE n_threshold<1').run();
-if (fTL.changes)   console.log(`[DB] Fixed ${fTL.changes} task(s) with n_threshold < 1`);
-
-const fTH = db.prepare('UPDATE tasks SET n_threshold=5 WHERE n_threshold>5').run();
-if (fTH.changes)   console.log(`[DB] Fixed ${fTH.changes} task(s) with n_threshold > 5`);
-
-// ── URL-format migration ──────────────────────────────────────────────────────
-// Normalise old string-format URLs to object format
-
-const appTasks = db.prepare("SELECT id, urls FROM tasks WHERE type='APPLICATION' AND deleted_at IS NULL").all();
-for (const t of appTasks) {
-  if (!t.urls) continue;
-  let parsed;
-  try { parsed = JSON.parse(t.urls); } catch { continue; }
-  if (!Array.isArray(parsed)) continue;
-
-  let changed = false;
-  const migrated = parsed.map(entry => {
-    if (typeof entry === 'string') {
-      changed = true;
-      return { url: entry, expected_status: null, timeout_sec: 15 };
-    }
-    return { url: entry.url, expected_status: entry.expected_status || null, timeout_sec: entry.timeout_sec || 15 };
-  });
-
-  if (changed) {
-    db.prepare('UPDATE tasks SET urls=? WHERE id=?').run(JSON.stringify(migrated), t.id);
-  }
-}
-
-// ── Cleanup ───────────────────────────────────────────────────────────────────
-
-const orphans = db.prepare(`
-  DELETE FROM incident_state
-  WHERE task_id IN (SELECT id FROM tasks WHERE status='OK' OR is_active=0)
-`).run();
-if (orphans.changes) console.log(`[DB] Cleared ${orphans.changes} orphaned incident(s)`);
-
+// Clean up orphans
+db.prepare(`DELETE FROM incident_state WHERE task_id IN (SELECT id FROM tasks WHERE status='OK' OR is_active=0)`).run();
 db.prepare("DELETE FROM import_sessions WHERE expires_at < datetime('now')").run();
-
-console.log('[DB] Schema and migrations complete. LOG_ARCHIVE_DIR:', LOG_ARCHIVE_DIR);
 
 module.exports = db;
 module.exports.LOG_ARCHIVE_DIR = LOG_ARCHIVE_DIR;
