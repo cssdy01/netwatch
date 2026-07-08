@@ -529,15 +529,14 @@ async function openModal(id) {
         </div>`;
     }
 
-    // URLs list (APPLICATION, no check results yet)
+    // Single URL list (APPLICATION)
     let urlsHtml = '';
-    if (t.type === 'APPLICATION' && t.urls?.length && !t.last_endpoint_results?.length) {
+    if (t.type === 'APPLICATION' && t.url && !t.last_endpoint_results?.length) {
       urlsHtml = `
         <div>
-          <div class="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">🔗 Monitored URLs</div>
+          <div class="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">🔗 Monitored URL</div>
           <div class="space-y-1.5 p-3 rounded-xl border border-gray-200 bg-gray-50">
-            ${t.urls.map(u => `<div class="font-mono text-sm text-gray-700 bg-white px-3 py-1.5 rounded border border-gray-100 shadow-sm">
-              ${escHtml(typeof u === 'string' ? u : u.url)}</div>`).join('')}
+            <div class="font-mono text-sm text-gray-700 bg-white px-3 py-1.5 rounded border border-gray-100 shadow-sm">${escHtml(t.url)}</div>
           </div>
         </div>`;
     }

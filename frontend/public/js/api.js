@@ -1,7 +1,4 @@
-// frontend/public/js/api.js — shared API client
-// Phase 3: Removed global host-mappings CRUD (no longer a separate resource).
-//          Host mapping is now stored per-task inside the task payload.
-
+// frontend/public/js/api.js
 const API = {
   base: () => (window.NW_CONFIG?.backendUrl || 'http://localhost:3000'),
 
@@ -28,13 +25,18 @@ const API = {
   del:    (path)       => API.req('DELETE',path),
   upload: (path, form) => API.req('POST',  path, form, true),
 
-  // ── Auth ─────────────────────────────────────────────────────────────────
+  // ── Auth ───────────────────────────────────────────────────────────────────────
   login:  (u, p) => API.post('/api/auth/login', { username: u, password: p }),
   logout: ()     => API.post('/api/auth/logout'),
   me:     ()     => API.get('/api/auth/me'),
 
-  // ── Tasks ─────────────────────────────────────────────────────────────────
-  // task payloads now include host_mapping_enabled/hostname/ip for APPLICATION tasks
+  // ── Users (Superadmin only) ────────────────────────────────────────────────────
+  users:      ()         => API.get('/api/users'),
+  createUser: (body)     => API.post('/api/users', body),
+  updateUser: (id, body) => API.put(`/api/users/${id}`, body),
+  deleteUser: (id)       => API.del(`/api/users/${id}`),
+
+  // ── Tasks ──────────────────────────────────────────────────────────────────────
   tasks:        ()         => API.get('/api/tasks'),
   tasksBin:     ()         => API.get('/api/tasks/bin'),
   task:         (id)       => API.get(`/api/tasks/${id}`),
@@ -48,11 +50,11 @@ const API = {
   toggleEmail:  (id)       => API.patch(`/api/tasks/${id}/email-toggle`),
   toggleActive: (id)       => API.patch(`/api/tasks/${id}/active-toggle`),
 
-  // ── Public (no auth) ─────────────────────────────────────────────────────
+  // ── Public (no auth) ───────────────────────────────────────────────────────────
   publicSummary:    ()   => API.get('/api/tasks/public/summary'),
   publicTaskDetail: (id) => API.get(`/api/tasks/public/${id}`),
 
-  // ── Logs ─────────────────────────────────────────────────────────────────
+  // ── Logs ───────────────────────────────────────────────────────────────────────
   logs:     (q)  => API.get('/api/logs/app?' + new URLSearchParams(q)),
   audit:    (q)  => API.get('/api/logs/audit?' + new URLSearchParams(q || {})),
   health:   ()   => API.get('/api/logs/health'),
@@ -63,7 +65,7 @@ const API = {
 
   logArchives: () => API.get('/api/logs/archives'),
 
-  // ── Backup ───────────────────────────────────────────────────────────────
+  // ── Backup ─────────────────────────────────────────────────────────────────────
   exportUrl: () => API.base() + '/api/backup/export',
 
   importPreview: (file) => {
@@ -72,6 +74,6 @@ const API = {
     return API.upload('/api/backup/import-preview', fd);
   },
 
-  importApply: (session_id, action) =>
-    API.post('/api/backup/import-apply', { session_id, action }),
+  importApply: (session_id, action, selected_ping_ids, selected_app_ids) =>
+    API.post('/api/backup/import-apply', { session_id, action, selected_ping_ids, selected_app_ids }),
 };
