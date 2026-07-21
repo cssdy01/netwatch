@@ -71,6 +71,13 @@ async function checkUrl(urlConfig, defaultTimeout = 15, mapping = null) {
     },
   };
 
+  // Ignore SSL certificate validation for all HTTPS URLs
+  if (parts && parts.protocol === 'https:') {
+    axiosConfig.httpsAgent = new https.Agent({
+      rejectUnauthorized: false
+    });
+  }
+
   if (shouldMap) {
     const originalParts = parts;
     const port = originalParts.port;
