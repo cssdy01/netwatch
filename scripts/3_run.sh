@@ -19,7 +19,7 @@ BOLD='\033[1m'; NC='\033[0m'
 MONITOR_HOST=$(hostname -I | awk '{print $1}')   # auto-detects your server IP
                                                    # or set manually: "192.168.11.22"
 BACKEND_PORT=3000
-FRONTEND_PORT=8888
+FRONTEND_PORT=80
 
 ADMIN_USER="admin"
 ADMIN_PASS="admin123"
@@ -59,7 +59,7 @@ FRONTEND_IMAGE="netwatch-frontend"
 # END CONFIG
 # =============================================================================
 
-BACKEND_API_URL="http://${MONITOR_HOST}:${BACKEND_PORT}"
+BACKEND_API_URL="http://netwatch.local:${BACKEND_PORT}"
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
