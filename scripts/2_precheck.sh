@@ -118,7 +118,7 @@ DOCKER_GW="${DOCKER_GW:-172.17.0.1}"
 info "Docker bridge gateway: ${DOCKER_GW}"
 
 # mynetworks includes Docker subnet
-MYNETWORKS=$(postconf mynetworks 2>/dev/null | awk '{print $3}')
+MYNETWORKS=$(postconf mynetworks 2>/dev/null)
 if echo "$MYNETWORKS" | grep -q "172.17"; then
   pass "Postfix mynetworks includes Docker subnet 172.17.0.0/16."
 else

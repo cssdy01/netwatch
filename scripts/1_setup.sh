@@ -88,10 +88,11 @@ sudo postconf -e "mynetworks = 127.0.0.0/8 ${DOCKER_SUBNET} [::1]/128"
 
 # Make sure Postfix listens on all interfaces (not just loopback)
 # so containers reaching via gateway IP can connect
-CURRENT_INET=$(postconf inet_interfaces 2>/dev/null | awk '{print $3}')
-if [ "$CURRENT_INET" = "loopback-only" ]; then
-  info "Setting Postfix inet_interfaces = all (needed for Docker relay)..."
-  sudo postconf -e "inet_interfaces = all"
+CURRENT_INET=$(postconf -h inet_interfaces 2>/dev/null)
+
+if [ "$CURRENT_INET" != "all" ]; then
+    info "Setting Postfix inet_interfaces = all (needed for Docker relay)..."
+    sudo postconf -e "inet_interfaces = all"
 fi
 
 # Apply changes
