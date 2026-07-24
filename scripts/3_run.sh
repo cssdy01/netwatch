@@ -42,6 +42,15 @@ DEFAULT_N_THRESHOLD="2"
 MIN_MONITOR_INTERVAL_MIN="3"
 MAX_MONITOR_INTERVAL_MIN="15"
 
+# SNMP monitoring settings
+# Generate once with: openssl rand -hex 32
+# Keep this value unchanged after credentials are saved.
+SNMP_CREDENTIAL_KEY="CHANGE-THIS-WITH-OPENSSL-RAND-HEX-32-BEFORE-FIRST-START"
+SNMP_RETENTION_DAYS="30"
+SNMP_MIN_INTERVAL_MIN="3"
+SNMP_MAX_INTERVAL_MIN="1440"
+POLL_CYCLE_CRON="*/1 * * * *"
+
 # ── Phase 1: Log archive directory ───────────────────────────────────────────
 # End-of-day log archives are written here inside the container.
 # This path is inside the Docker volume, so archives persist across restarts.
@@ -59,7 +68,7 @@ FRONTEND_IMAGE="netwatch-frontend"
 # END CONFIG
 # =============================================================================
 
-BACKEND_API_URL="http://netwatch.local:${BACKEND_PORT}"
+BACKEND_API_URL="http://${MONITOR_HOST}:${BACKEND_PORT}"
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -114,6 +123,12 @@ require_images() {
 do_start() {
   require_images || return 1
 
+  if [ ${#SNMP_CREDENTIAL_KEY} -lt 32 ] || [ "$SNMP_CREDENTIAL_KEY" = "CHANGE-THIS-WITH-OPENSSL-RAND-HEX-32-BEFORE-FIRST-START" ]; then
+    echo -e "  ${RED}[ERROR]${NC} Configure SNMP_CREDENTIAL_KEY first."
+    echo "  Generate one with: openssl rand -hex 32"
+    return 1
+  fi
+
   echo ""
   echo "  Removing old containers..."
   docker rm -f netwatch-backend netwatch-frontend 2>/dev/null || true
@@ -135,6 +150,11 @@ do_start() {
     -e DEFAULT_N_THRESHOLD="${DEFAULT_N_THRESHOLD}" \
     -e MIN_MONITOR_INTERVAL_MIN="${MIN_MONITOR_INTERVAL_MIN}" \
     -e MAX_MONITOR_INTERVAL_MIN="${MAX_MONITOR_INTERVAL_MIN}" \
+    -e SNMP_CREDENTIAL_KEY="${SNMP_CREDENTIAL_KEY}" \
+    -e SNMP_RETENTION_DAYS="${SNMP_RETENTION_DAYS}" \
+    -e SNMP_MIN_INTERVAL_MIN="${SNMP_MIN_INTERVAL_MIN}" \
+    -e SNMP_MAX_INTERVAL_MIN="${SNMP_MAX_INTERVAL_MIN}" \
+    -e POLL_CYCLE_CRON="${POLL_CYCLE_CRON}" \
     -e DATA_DIR="${DATA_DIR}" \
     -e LOG_ARCHIVE_DIR="${LOG_ARCHIVE_DIR}" \
     -e TZ="Asia/Kolkata" \

@@ -6,6 +6,7 @@
   <title>NetWatch — Admin Dashboard</title>
 
   <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
@@ -44,6 +45,7 @@
     input:focus + .toggle-slider { box-shadow: 0 0 0 2px rgba(249, 115, 22, 0.2); }
     input:checked + .toggle-slider:before { transform: translateX(16px); }
     input:disabled + .toggle-slider { opacity: 0.5; cursor: not-allowed; }
+    .terminal-log { background:#0f172a;color:#d1fae5;font-family:JetBrains Mono,monospace;font-size:11px;max-height:300px;overflow:auto;padding:1rem;border-radius:.75rem;white-space:pre-wrap; }
   </style>
 </head>
 <body class="min-h-screen flex flex-col">
@@ -91,9 +93,9 @@
     <div class="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm">
       <table class="w-full text-sm text-left">
         <thead class="text-[11px] font-bold uppercase tracking-wider text-gray-500 border-b border-gray-200 bg-gray-50">
-          <tr><th class="px-5 py-3.5">Name</th><th class="px-5 py-3.5">Target</th><th class="px-5 py-3.5">OS</th><th class="px-5 py-3.5">Int</th><th class="px-5 py-3.5">N</th><th class="px-5 py-3.5">Health</th><th class="px-5 py-3.5">Status</th><th class="px-5 py-3.5">Email</th><th class="px-5 py-3.5">Last Check (IST)</th><th class="px-5 py-3.5 text-right">Actions</th></tr>
+          <tr><th class="px-5 py-3.5">Name</th><th class="px-5 py-3.5">Target</th><th class="px-5 py-3.5">OS</th><th class="px-5 py-3.5">Int</th><th class="px-5 py-3.5">N</th><th class="px-5 py-3.5">Health</th><th class="px-5 py-3.5">SNMP</th><th class="px-5 py-3.5">Status</th><th class="px-5 py-3.5">Email</th><th class="px-5 py-3.5">Last Check (IST)</th><th class="px-5 py-3.5 text-right">Actions</th></tr>
         </thead>
-        <tbody id="pingTasksBody" class="divide-y divide-gray-100"><tr><td colspan="10" class="px-5 py-10 text-center text-gray-500">Loading…</td></tr></tbody>
+        <tbody id="pingTasksBody" class="divide-y divide-gray-100"><tr><td colspan="11" class="px-5 py-10 text-center text-gray-500">Loading…</td></tr></tbody>
       </table>
     </div>
   </div>
@@ -360,6 +362,22 @@
           <select id="fOsType" class="inp font-medium" style="max-width:200px;"><option>Linux</option><option>Windows</option><option>Other</option></select>
         </div>
 
+
+        <div id="snmpSection" class="rounded-xl border border-orange-200 bg-orange-50/40 p-5 space-y-4">
+          <label class="flex items-center justify-between cursor-pointer"><span><b class="text-sm">SNMP Monitoring</b><span class="block text-xs text-gray-500 mt-1">Optional diagnostics for this System/PING task</span></span><span class="toggle-switch"><input id="fSnmpEnabled" type="checkbox" onchange="onSnmpToggle()"><span class="toggle-slider"></span></span></label>
+          <div id="snmpFields" class="hidden space-y-4 pt-4 border-t border-orange-100">
+            <div class="grid grid-cols-3 gap-3"><div><label class="block text-[11px] font-bold text-gray-500 uppercase mb-1">Version</label><select id="fSnmpVersion" class="inp" onchange="onSnmpVersionChange()"><option value="3">SNMP v3</option><option value="2c">SNMP v2c</option></select></div><div><label class="block text-[11px] font-bold text-gray-500 uppercase mb-1">Port</label><input id="fSnmpPort" class="inp" type="number" value="161"></div><div><label class="block text-[11px] font-bold text-gray-500 uppercase mb-1">Interval min</label><input id="fSnmpInterval" class="inp" type="number" min="3" max="1440" value="15"></div></div>
+            <div id="snmpV2Fields" class="hidden"><label class="block text-[11px] font-bold text-gray-500 uppercase mb-1">Community</label><input id="fSnmpCommunity" class="inp" type="password" autocomplete="new-password" placeholder="Leave blank when editing to keep stored value"></div>
+            <div id="snmpV3Fields" class="space-y-3"><div class="grid grid-cols-2 gap-3"><div><label class="block text-[11px] font-bold text-gray-500 uppercase mb-1">Username</label><input id="fSnmpUsername" class="inp"></div><div><label class="block text-[11px] font-bold text-gray-500 uppercase mb-1">Security level</label><select id="fSnmpSecurity" class="inp" onchange="onSnmpSecurityChange()"><option value="noAuthNoPriv">noAuthNoPriv</option><option value="authNoPriv" selected>authNoPriv</option><option value="authPriv">authPriv</option></select></div></div>
+              <div id="snmpAuthFields" class="grid grid-cols-2 gap-3"><div><label class="block text-[11px] font-bold text-gray-500 uppercase mb-1">Auth protocol</label><select id="fSnmpAuthProtocol" class="inp"><option>SHA</option><option>SHA256</option><option>SHA384</option><option>SHA512</option><option>MD5</option></select></div><div><label class="block text-[11px] font-bold text-gray-500 uppercase mb-1">Auth password</label><input id="fSnmpAuthPassword" type="password" class="inp" autocomplete="new-password" placeholder="Blank keeps stored password"></div></div>
+              <div id="snmpPrivFields" class="hidden grid grid-cols-2 gap-3"><div><label class="block text-[11px] font-bold text-gray-500 uppercase mb-1">Privacy protocol</label><select id="fSnmpPrivProtocol" class="inp"><option value="AES">AES</option><option value="AES192">AES192</option><option value="AES256">AES256</option><option value="DES">DES</option></select></div><div><label class="block text-[11px] font-bold text-gray-500 uppercase mb-1">Privacy password</label><input id="fSnmpPrivPassword" type="password" class="inp" autocomplete="new-password" placeholder="Blank keeps stored password"></div></div>
+            </div>
+            <div class="grid grid-cols-2 gap-3"><div><label class="block text-[11px] font-bold text-gray-500 uppercase mb-1">Timeout sec</label><input id="fSnmpTimeout" class="inp" type="number" min="1" max="60" value="5"></div><div><label class="block text-[11px] font-bold text-gray-500 uppercase mb-1">Retries</label><input id="fSnmpRetries" class="inp" type="number" min="0" max="5" value="1"></div></div>
+            <details><summary class="text-xs font-bold text-gray-600 cursor-pointer">Advanced Linux extend OIDs</summary><div class="space-y-2 mt-3"><input id="fSnmpRebootOid" class="inp font-mono text-xs" placeholder="Last reboot extend output OID"><input id="fSnmpShutdownOid" class="inp font-mono text-xs" placeholder="Last shutdown extend output OID"><input id="fSnmpLogsOid" class="inp font-mono text-xs" placeholder="System logs extend output OID"></div></details>
+            <button type="button" onclick="testSnmpConnection()" class="px-4 py-2 rounded-lg bg-gray-800 text-white text-xs font-bold">Test SNMP Connection</button><div id="snmpTestResult" class="text-xs"></div>
+          </div>
+        </div>
+
         <div id="urlFields" class="hidden">
           <label class="block text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1.5">Monitored URL *</label>
           <input id="fUrl" class="inp font-mono text-sm mb-3" placeholder="http://hostname:port/path">
@@ -607,6 +625,29 @@ async function deleteUser(id, email) {
   } catch(e) { alert(e.message); }
 }
 
+
+function snmpPayload(){
+  return { snmp_enabled:document.getElementById('fSnmpEnabled').checked, snmp_version:document.getElementById('fSnmpVersion').value, snmp_port:Number(document.getElementById('fSnmpPort').value||161), snmp_interval_min:Number(document.getElementById('fSnmpInterval').value||15), snmp_community:document.getElementById('fSnmpCommunity').value, snmp_username:document.getElementById('fSnmpUsername').value.trim(), snmp_security_level:document.getElementById('fSnmpSecurity').value, snmp_auth_protocol:document.getElementById('fSnmpSecurity').value==='noAuthNoPriv'?'NONE':document.getElementById('fSnmpAuthProtocol').value, snmp_auth_password:document.getElementById('fSnmpAuthPassword').value, snmp_priv_protocol:document.getElementById('fSnmpSecurity').value==='authPriv'?document.getElementById('fSnmpPrivProtocol').value:'NONE', snmp_priv_password:document.getElementById('fSnmpPrivPassword').value, snmp_timeout_sec:Number(document.getElementById('fSnmpTimeout').value||5), snmp_retries:Number(document.getElementById('fSnmpRetries').value||1), snmp_extend_reboot_oid:document.getElementById('fSnmpRebootOid').value.trim(), snmp_extend_shutdown_oid:document.getElementById('fSnmpShutdownOid').value.trim(), snmp_extend_logs_oid:document.getElementById('fSnmpLogsOid').value.trim() };
+}
+function onSnmpToggle(){ document.getElementById('snmpFields').classList.toggle('hidden',!document.getElementById('fSnmpEnabled').checked); }
+function onSnmpVersionChange(){ const v=document.getElementById('fSnmpVersion').value;document.getElementById('snmpV2Fields').classList.toggle('hidden',v!=='2c');document.getElementById('snmpV3Fields').classList.toggle('hidden',v!=='3'); }
+function onSnmpSecurityChange(){ const v=document.getElementById('fSnmpSecurity').value;document.getElementById('snmpAuthFields').classList.toggle('hidden',v==='noAuthNoPriv');document.getElementById('snmpPrivFields').classList.toggle('hidden',v!=='authPriv'); }
+function fillSnmp(t){
+  const g=(id,v)=>document.getElementById(id).value=v??'';
+  document.getElementById('fSnmpEnabled').checked=!!t?.snmp_enabled;g('fSnmpVersion',t?.snmp_version||'3');g('fSnmpPort',t?.snmp_port||161);g('fSnmpInterval',t?.snmp_interval_min||15);g('fSnmpCommunity','');g('fSnmpUsername',t?.snmp_username||'');g('fSnmpSecurity',t?.snmp_security_level||'authNoPriv');g('fSnmpAuthProtocol',t?.snmp_auth_protocol||'SHA');g('fSnmpAuthPassword','');g('fSnmpPrivProtocol',t?.snmp_priv_protocol==='NONE'?'AES':t?.snmp_priv_protocol||'AES');g('fSnmpPrivPassword','');g('fSnmpTimeout',t?.snmp_timeout_sec||5);g('fSnmpRetries',t?.snmp_retries??1);g('fSnmpRebootOid',t?.snmp_extend_reboot_oid||'');g('fSnmpShutdownOid',t?.snmp_extend_shutdown_oid||'');g('fSnmpLogsOid',t?.snmp_extend_logs_oid||'');onSnmpToggle();onSnmpVersionChange();onSnmpSecurityChange();
+}
+async function testSnmpConnection(){
+  const out=document.getElementById('snmpTestResult');out.textContent='Testing...';
+  try{const body={task_id:document.getElementById('taskId').value||undefined,target:document.getElementById('fTarget').value.trim(),...snmpPayload()};const r=await API.post('/api/tasks/snmp/test',body);out.innerHTML=r.result==='PASS'?`<span class="text-green-700 font-bold">Connected</span> · ${escHtml(r.hostname||'')} · CPU ${r.cpuUsage??'—'}% · RAM ${r.memoryUsage??'—'}%`:`<span class="text-red-600 font-bold">Failed: ${escHtml(r.errorRaw||'Unknown error')}</span>`;}catch(e){out.innerHTML=`<span class="text-red-600 font-bold">${escHtml(e.message)}</span>`;}
+}
+async function toggleSnmp(id,cb){cb.disabled=true;try{await API.patch(`/api/tasks/${id}/snmp-toggle`);await loadTasks();}catch(e){cb.checked=!cb.checked;alert(e.message);}finally{cb.disabled=false;}}
+function snmpDetail(t){
+  if(!t.snmp?.enabled)return '';
+  const x=t.snmp.latest;if(!x)return '<div class="p-4 bg-orange-50 border border-orange-200 rounded-xl">SNMP enabled, waiting for first check.</div>';
+  const disks=x.disk_usage||[], logs=x.system_logs||[], rows=(t.snmp.last_10_checks||[]).map(c=>`<tr class="border-b"><td class="py-2">${toIST(c.checked_at)}</td><td>${c.cpu_usage??'—'}%</td><td>${c.memory_usage??'—'}%</td><td>${c.result}</td></tr>`).join('');
+  return `<div class="space-y-4"><h4 class="text-xs font-bold uppercase text-gray-500">SNMP System Health</h4><div class="grid grid-cols-2 gap-3 bg-gray-50 border rounded-xl p-4"><div>Hostname: <b>${escHtml(x.hostname||'—')}</b></div><div>Uptime: <b>${Math.floor((x.uptime_seconds||0)/86400)} days</b></div><div>CPU: <b>${x.cpu_usage??'—'}%</b></div><div>RAM: <b>${x.memory_usage??'—'}%</b></div><div>Last reboot: <b>${x.last_reboot_at?toIST(x.last_reboot_at):'—'}</b></div><div>Last shutdown: <b>${x.last_shutdown_at?toIST(x.last_shutdown_at):'—'}</b></div></div>${disks.map(d=>`<div class="mb-2"><div class="flex justify-between text-xs"><span>${escHtml(d.name)}</span><b>${d.usage}%</b></div><div class="h-2 bg-gray-200 rounded"><div class="h-2 bg-orange-500 rounded" style="width:${Math.min(100,d.usage||0)}%"></div></div></div>`).join('')}<table class="w-full text-xs"><thead><tr class="text-left"><th>Check</th><th>CPU</th><th>RAM</th><th>Status</th></tr></thead><tbody>${rows}</tbody></table><pre class="terminal-log">${escHtml(logs.join('\n')||'Extend logs not configured or no data returned.')}</pre></div>`;
+}
+
 // ── TASKS ──
 let allTasks=[];
 async function loadTasks(){ try{ allTasks=await API.tasks(); renderTasks(); }catch(e){ if(e.status===401) window.location='/admin/login.html'; } }
@@ -619,7 +660,7 @@ function renderTasks(){
   if(document.getElementById('pingTaskCount')) document.getElementById('pingTaskCount').textContent=ping.length+' task'+(ping.length!==1?'s':'');
   if(document.getElementById('appTaskCount')) document.getElementById('appTaskCount').textContent=app.length+' task'+(app.length!==1?'s':'');
 
-  document.getElementById('pingTasksBody').innerHTML=ping.length?ping.map(t=>taskRow(t,'ping')).join('') : `<tr><td colspan="10" class="text-center py-10 text-gray-500">No system tasks found</td></tr>`;
+  document.getElementById('pingTasksBody').innerHTML=ping.length?ping.map(t=>taskRow(t,'ping')).join('') : `<tr><td colspan="11" class="text-center py-10 text-gray-500">No system tasks found</td></tr>`;
   document.getElementById('appTasksBody').innerHTML=app.length?app.map(t=>taskRow(t,'app')).join('') : `<tr><td colspan="11" class="text-center py-10 text-gray-500">No application tasks found</td></tr>`;
 }
 
@@ -638,6 +679,7 @@ function taskRow(t,mode){
     <td class="px-5 py-3 text-gray-500 text-xs font-medium">${t.interval_min}m</td>
     <td class="px-5 py-3 text-gray-500 text-xs font-medium">${t.n_threshold}</td>
     <td class="px-5 py-3">${sb}</td>
+    ${mode==='ping'?`<td class="px-5 py-3" onclick="event.stopPropagation()"><label class="toggle-switch"><input type="checkbox" ${t.snmp_enabled?'checked':''} onchange="toggleSnmp('${t.id}',this)"><span class="toggle-slider"></span></label></td>`:''}
     <td class="px-5 py-3" onclick="event.stopPropagation()"><label class="toggle-switch"><input type="checkbox" ${t.is_active?'checked':''} onchange="toggleActive('${t.id}',this)"><span class="toggle-slider"></span></label></td>
     <td class="px-5 py-3" onclick="event.stopPropagation()"><label class="toggle-switch"><input type="checkbox" ${t.email_enabled?'checked':''} onchange="toggleEmail('${t.id}',this)"><span class="toggle-slider"></span></label></td>
     <td class="px-5 py-3 text-xs text-gray-500 font-medium">${t.last_checked?toIST(t.last_checked):'—'}</td>
@@ -705,6 +747,7 @@ function openTaskModal(id){
     document.getElementById('fHmHostname').value=''; document.getElementById('fHmIp').value='';
     document.getElementById('fUrl').value=''; document.getElementById('fExpectedStatus').value=''; document.getElementById('fTimeout').value=15;
   }
+  fillSnmp(id ? allTasks.find(x=>x.id===id) : null);
   onTypeChange(); onEmailToggle(); onHmToggle();
 }
 function closeTaskModal(){ document.getElementById('taskModal').classList.add('hidden'); }
@@ -713,6 +756,7 @@ function onTypeChange(){
   document.getElementById('pingFields').classList.toggle('hidden',type!=='PING');
   document.getElementById('urlFields').classList.toggle('hidden',type!=='APPLICATION');
   document.getElementById('hostMappingSection').classList.toggle('hidden',type!=='APPLICATION');
+  document.getElementById('snmpSection').classList.toggle('hidden',type!=='PING');
   document.getElementById('targetLabel').textContent=type==='PING'?'Target IP / Hostname *':'Server IP / Hostname *';
 }
 function onEmailToggle(){ document.getElementById('emailFields').style.opacity=document.getElementById('fEmailEnabled').checked?'1':'0.4'; }
@@ -744,6 +788,7 @@ async function testBeforeSave(){
       type: document.getElementById('fType').value, target: document.getElementById('fTarget').value.trim(),
       url: document.getElementById('fUrl').value.trim(), expected_status: document.getElementById('fExpectedStatus').value, timeout_sec: document.getElementById('fTimeout').value,
       host_mapping_enabled: document.getElementById('fHmEnabled').checked, host_mapping_hostname: document.getElementById('fHmHostname').value.trim(), host_mapping_ip: document.getElementById('fHmIp').value.trim(),
+      ...(document.getElementById('fType').value==='PING'?snmpPayload():{}),
     });
     const ok=data.result==='PASS';
     res.innerHTML=`<span class="px-2 py-1 rounded font-bold text-xs ${ok?'bg-green-100 text-green-700':'bg-red-100 text-red-700'}">${data.result}</span>`+(data.responseMs?`<span class="ml-2 text-xs">${data.responseMs}ms</span>`:'')+(data.errorRaw?`<br><span class="text-xs text-red-600">${escHtml(data.errorRaw)}</span>`:'');
@@ -761,6 +806,7 @@ async function saveTask(){
     email_enabled: document.getElementById('fEmailEnabled').checked, url: type==='APPLICATION'?document.getElementById('fUrl').value.trim():'',
     expected_status: document.getElementById('fExpectedStatus').value, timeout_sec: document.getElementById('fTimeout').value,
     host_mapping_enabled: document.getElementById('fHmEnabled').checked, host_mapping_hostname: document.getElementById('fHmHostname').value.trim(), host_mapping_ip: document.getElementById('fHmIp').value.trim(),
+    ...(type==='PING'?snmpPayload():{snmp_enabled:false}),
   };
   const clientErr=validateTaskForm(payload,type);
   if(clientErr){ err.textContent=clientErr; err.classList.remove('hidden'); return; }
